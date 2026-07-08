@@ -5,14 +5,30 @@
 }
 
 html, body {
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body.dark {
   background: #0F1117;
   color: #E8E8ED;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  min-height: 100vh;
+}
+
+body.light {
+  background: #F5F5F7;
+  color: #1a1a2e;
 }
 
 input, textarea, select, button {
   font-family: inherit;
+}
+
+input[type="date"] {
+  color-scheme: dark;
+}
+
+body.light input[type="date"] {
+  color-scheme: light;
 }
 
 ::-webkit-scrollbar {
