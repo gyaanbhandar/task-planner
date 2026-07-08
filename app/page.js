@@ -19,6 +19,88 @@ const S = {
   primaryBtn: { background: '#6C5CE7', border: 'none', borderRadius: 10, padding: '12px 0', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', width: '100%' },
 };
 
+// ─── AUTH SCREEN ───
+function AuthScreen({ onLogin }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+
+  const handleSubmit = async () => {
+    setError('');
+    setSuccess('');
+    if (!email || !password) { setError('Email aur password dono daalo'); return; }
+    if (!isLogin && !name) { setError('Naam daalo'); return; }
+    setLoading(true);
+
+    if (isLogin) {
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) { setError('Galat email ya password'); setLoading(false); return; }
+      onLogin(data.session);
+    } else {
+      const { data, error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } }
+      });
+      if (err) { setError(err.message); setLoading(false); return; }
+      if (data.session) {
+        onLogin(data.session);
+      } else {
+        setSuccess('Verification email bheja hai — check karo inbox (spam bhi dekho). Verify karne ke baad login karo.');
+        setIsLogin(true);
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleKeyDown = (e) => { if (e.key === 'Enter') handleSubmit(); };
+
+  return (
+    <div style={{ background: '#0F1117', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
+      <div style={{ background: '#1A1D27', borderRadius: 16, padding: 32, width: '90%', maxWidth: 400, border: '1px solid #2a2d3a' }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>⚡</div>
+          <h1 style={{ margin: 0, fontSize: 22, color: '#E8E8ED', fontWeight: 700 }}>Task Planner</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#8B8D97' }}>AI-Powered Business OS</p>
+        </div>
+
+        <div style={{ display: 'flex', marginBottom: 20, background: '#0F1117', borderRadius: 8, padding: 3 }}>
+          <button onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }} style={{
+            flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            background: isLogin ? '#6C5CE7' : 'transparent', color: isLogin ? '#fff' : '#8B8D97',
+          }}>Login</button>
+          <button onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }} style={{
+            flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            background: !isLogin ? '#6C5CE7' : 'transparent', color: !isLogin ? '#fff' : '#8B8D97',
+          }}>Sign Up</button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {!isLogin && (
+            <input style={S.input} placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} onKeyDown={handleKeyDown} />
+          )}
+          <input style={S.input} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={handleKeyDown} />
+          <input style={S.input} type="password" placeholder="Password (min 6 characters)" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKeyDown} />
+
+          {error && <div style={{ background: '#ff6b6b18', border: '1px solid #ff6b6b44', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#ff6b6b' }}>{error}</div>}
+          {success && <div style={{ background: '#00b89418', border: '1px solid #00b89444', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#00b894' }}>{success}</div>}
+
+          <button onClick={handleSubmit} disabled={loading} style={{ ...S.primaryBtn, opacity: loading ? 0.6 : 1, marginTop: 4 }}>
+            {loading ? 'Wait...' : isLogin ? 'Login' : 'Create Account'}
+          </button>
+        </div>
+
+        <p style={{ textAlign: 'center', fontSize: 11, color: '#555', marginTop: 16 }}>Secured by Supabase Auth</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── FORM PANEL ───
 function FormPanel({ form, setForm, editTask, onSubmit, onClose, isMobile }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000aa' }}
@@ -71,6 +153,7 @@ function FormPanel({ form, setForm, editTask, onSubmit, onClose, isMobile }) {
   );
 }
 
+// ─── TASK CARD ───
 function TaskCard({ task, onToggle, onEdit, onDelete, isMobile }) {
   const [exp, setExp] = useState(false);
   const cat = CATEGORIES.find(c => c.id === task.category);
@@ -131,9 +214,12 @@ function useWindowWidth() {
   return w;
 }
 
+// ─── MAIN APP ───
 export default function Home() {
   const width = useWindowWidth();
   const isMobile = width < 768;
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [view, setView] = useState('today');
   const [selectedCat, setSelectedCat] = useState(null);
@@ -152,15 +238,35 @@ export default function Home() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
 
+  // CHECK AUTH
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setTasks([]);
+  };
+
+  // LOAD TASKS
   const loadTasks = useCallback(async () => {
+    if (!session) return;
     const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
     if (!error && data) {
       setTasks(data.map(t => ({ ...t, deadline: t.deadline || '', description: t.description || '', subcategory: t.subcategory || '' })));
     }
     setLoading(false);
-  }, []);
+  }, [session]);
 
-  useEffect(() => { loadTasks(); }, [loadTasks]);
+  useEffect(() => { if (session) loadTasks(); }, [session, loadTasks]);
 
   const addTask = async () => {
     if (!form.title.trim()) return;
@@ -168,6 +274,7 @@ export default function Home() {
       title: form.title, description: form.description, category: form.category,
       subcategory: form.subcategory, priority: form.priority, type: form.type,
       deadline: form.deadline || null, status: 'pending', approval_status: 'none', suggested_by: 'user',
+      user_id: session.user.id,
     }]);
     if (!error) {
       await loadTasks();
@@ -195,15 +302,14 @@ export default function Home() {
   const toggleStatus = async (id) => {
     const task = tasks.find(t => t.id === id);
     const newStatus = task.status === 'done' ? 'pending' : 'done';
-    const { error } = await supabase.from('tasks').update({
-      status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null,
-    }).eq('id', id);
-    if (!error) await loadTasks();
+    await supabase.from('tasks').update({ status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }).eq('id', id);
+    await loadTasks();
   };
 
   const deleteTask = async (id) => {
-    const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (!error) { await loadTasks(); showToast('Deleted'); }
+    await supabase.from('tasks').delete().eq('id', id);
+    await loadTasks();
+    showToast('Deleted');
   };
 
   const startEdit = (task) => {
@@ -251,14 +357,24 @@ export default function Home() {
 
   const catCounts = CATEGORIES.reduce((a, c) => { a[c.id] = tasks.filter(t => t.category === c.id && t.status !== 'done').length; return a; }, {});
 
-  if (loading) return <div style={{ background: '#0F1117', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8B8D97' }}>Loading...</div>;
+  // AUTH LOADING
+  if (authLoading) return <div style={{ background: '#0F1117', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8B8D97', fontFamily: 'system-ui' }}>Loading...</div>;
+
+  // NOT LOGGED IN
+  if (!session) return <AuthScreen onLogin={(s) => setSession(s)} />;
+
+  // LOGGED IN BUT TASKS LOADING
+  if (loading) return <div style={{ background: '#0F1117', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8B8D97', fontFamily: 'system-ui' }}>Loading tasks...</div>;
+
+  const userName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
 
   return (
-    <div style={{ background: '#0F1117', minHeight: '100vh', display: 'flex' }}>
+    <div style={{ background: '#0F1117', minHeight: '100vh', display: 'flex', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
       {toast && <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: '#00b894', color: '#fff', padding: '8px 20px', borderRadius: 20, fontSize: 13, fontWeight: 600, zIndex: 200 }}>{toast}</div>}
 
       {showAdd && <FormPanel form={form} setForm={setForm} editTask={editTask} onSubmit={editTask ? updateTask : addTask} onClose={handleFormClose} isMobile={isMobile} />}
 
+      {/* DESKTOP SIDEBAR */}
       {!isMobile && (
         <div style={{ width: 240, background: '#14161F', borderRight: '1px solid #1e2130', position: 'sticky', top: 0, height: '100vh', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '20px 16px 12px' }}>
@@ -284,18 +400,26 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <div style={{ padding: '8px 12px 16px' }}>
+          <div style={{ padding: '8px 12px 16px', borderTop: '1px solid #1e2130' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '0 4px' }}>
+              <div style={{ width: 28, height: 28, borderRadius: 14, background: '#6C5CE722', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#a29bfe', fontWeight: 700 }}>
+                {userName[0].toUpperCase()}
+              </div>
+              <span style={{ fontSize: 12, color: '#8B8D97', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</span>
+              <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ff6b6b', fontSize: 11, cursor: 'pointer', padding: '4px 8px' }}>Logout</button>
+            </div>
             <button onClick={() => setShowAdd(true)} style={{ ...S.primaryBtn, fontSize: 13, padding: '10px 0' }}>+ New Task</button>
           </div>
         </div>
       )}
 
+      {/* MOBILE SIDEBAR */}
       {isMobile && sidebarOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
           <div style={{ width: 260, background: '#14161F', height: '100%', overflowY: 'auto', borderRight: '1px solid #1e2130', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '20px 16px 12px' }}>
               <h1 style={{ margin: 0, fontSize: 17, color: '#E8E8ED', fontWeight: 700 }}>⚡ Task Planner</h1>
-              <p style={{ margin: '2px 0 0', fontSize: 11, color: '#8B8D97' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: '#8B8D97' }}>{userName}</p>
             </div>
             <div style={{ padding: '4px 8px', flex: 1 }}>
               {[{ id: 'today', icon: '📋', label: "Today's Focus" }, { id: 'all', icon: '📁', label: 'All Tasks' }, { id: 'ai', icon: '🤖', label: 'AI Plan' }].map(item => (
@@ -317,13 +441,15 @@ export default function Home() {
               ))}
             </div>
             <div style={{ padding: '8px 12px 16px' }}>
-              <button onClick={() => { setShowAdd(true); setSidebarOpen(false); }} style={{ ...S.primaryBtn, fontSize: 13, padding: '10px 0' }}>+ New Task</button>
+              <button onClick={() => { setShowAdd(true); setSidebarOpen(false); }} style={{ ...S.primaryBtn, fontSize: 13, padding: '10px 0', marginBottom: 8 }}>+ New Task</button>
+              <button onClick={handleLogout} style={{ width: '100%', padding: '8px 0', borderRadius: 8, border: '1px solid #ff6b6b33', background: 'transparent', color: '#ff6b6b', fontSize: 12, cursor: 'pointer' }}>Logout</button>
             </div>
           </div>
           <div style={{ flex: 1, background: '#00000066' }} onClick={() => setSidebarOpen(false)} />
         </div>
       )}
 
+      {/* MAIN CONTENT */}
       <div style={{ flex: 1, overflowY: 'auto', height: isMobile ? 'auto' : '100vh', minHeight: '100vh', paddingBottom: isMobile ? 80 : 24 }}>
         {isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#14161F', position: 'sticky', top: 0, zIndex: 10, borderBottom: '1px solid #1e2130' }}>
