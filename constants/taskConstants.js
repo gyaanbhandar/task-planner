@@ -14,15 +14,15 @@ export const PRIORITY_COLORS = {
 
 export const THEMES = {
   dark: {
-    bg: '#070709',
-    surface: '#0F0F13',
-    sidebar: '#0D0D11',
-    border: '#1F1F26',
-    borderAlt: '#272732',
+    bg: '#000000',
+    surface: '#0A0A0C',
+    sidebar: '#050505',
+    border: '#18181C',
+    borderAlt: '#222227',
     text: '#F4F4F5',
-    textSec: '#71717A',
-    textDim: '#42424F',
-    inputBg: '#050507',
+    textSec: '#8E8E93',
+    textDim: '#3A3A3C',
+    inputBg: '#020202',
   },
   light: {
     bg: '#FAFAFA',
@@ -39,8 +39,25 @@ export const THEMES = {
 
 export function getS(t) {
   return {
-    input: { background: t.inputBg, border: '1px solid ' + t.borderAlt, borderRadius: 10, padding: '11px 14px', color: t.text, fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' },
-    label: { fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '1px', color: t.textSec, fontWeight: 600 },
-    primaryBtn: { background: '#6C5CE7', border: 'none', borderRadius: 10, padding: '12px 0', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%' },
+    input: { 
+      background: t.inputBg, 
+      border: '1px solid ' + t.border, 
+      borderRadius: '8px', 
+      padding: '10px 12px', 
+      color: t.text, 
+      fontSize: '13px', 
+      outline: 'none', 
+      width: '100%', 
+      boxSizing: 'border-box',
+      fontFamily: 'inherit'
+    },
+    label: { 
+      fontSize: '11px', 
+      fontFamily: 'monospace', 
+      textTransform: 'uppercase', 
+      letterSpacing: '0.5px', 
+      color: t.textSec, 
+      fontWeight: '600' 
+    },
   };
 }
