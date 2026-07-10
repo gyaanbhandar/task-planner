@@ -8,30 +8,29 @@ export default function Sidebar({ mobile, view, setView, setSelectedCat, selecte
   const { theme, t, toggleTheme } = useTheme();
   const S = getS(t);
 
+  const activeBg = '#1E1E24';
+  const hoverBg = '#16161A';
+
   return (
-    <div className="flex flex-col h-full bg-[#09090B]/40 backdrop-blur-xl border-r border-zinc-900/60 font-sans select-none text-zinc-300">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#121215', color: '#E4E4E7', fontFamily: 'system-ui, sans-serif' }}>
       
-      {/* Header Profile Section / Arc Browser Inspired Title */}
-      <div className="p-5 flex justify-between items-start border-b border-zinc-900/40">
+      {/* Profile/Header Section */}
+      <div style={{ padding: '24px 20px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #1F1F23' }}>
         <div>
-          <h1 className="text-sm font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 to-zinc-400 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+          <h1 style={{ margin: 0, fontSize: 15, color: '#FFFFFF', fontWeight: 600, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6C5CE7', display: 'inline-block' }} />
             Task Planner
           </h1>
-          <p className="text-[10px] font-mono text-zinc-500 mt-1 uppercase tracking-wider">{formatIndianDate()}</p>
+          <p style={{ margin: '4px 0 0', fontSize: 10, fontFamily: 'monospace', color: '#71717A', textTransform: 'uppercase' }}>{formatIndianDate()}</p>
         </div>
-        <button 
-          onClick={toggleTheme} 
-          className="text-zinc-500 hover:text-zinc-200 transition-colors text-sm p-1 rounded-md hover:bg-zinc-900/50" 
-          title="Toggle System Environment Theme"
-        >
+        <button onClick={toggleTheme} style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: '#71717A' }} title="Toggle System Theme">
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
       </div>
 
-      {/* Main Core Thread Sequences navigation stack */}
-      <div className="p-3 flex-1 space-y-1 overflow-y-auto">
-        <div className="text-[9px] font-mono tracking-widest text-zinc-600 uppercase px-2.5 mb-2 block">Scopes</div>
+      {/* Navigation Stack */}
+      <div style={{ padding: '16px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#52525B', letterSpacing: '1px', textTransform: 'uppercase', paddingLeft: 8, marginBottom: 4 }}>Scopes</span>
         
         {[
           { id: 'today', icon: '📋', label: "Today's Focus" }, 
@@ -43,91 +42,61 @@ export default function Sidebar({ mobile, view, setView, setSelectedCat, selecte
             <button 
               key={item.id} 
               onClick={() => { setView(item.id); setSelectedCat(null); if (mobile) setSidebarOpen(false); }} 
-              className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium tracking-wide transition-all duration-200 ${
-                isActive 
-                  ? 'bg-zinc-900 text-purple-400 border border-zinc-800 shadow-[0_1px_10px_rgba(0,0,0,0.4)]' 
-                  : 'hover:bg-zinc-900/40 hover:text-zinc-100 border border-transparent'
-              }`}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', borderRadius: 10, border: isActive ? '1px solid #27272A' : '1px solid transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500, background: isActive ? activeBg : 'transparent', color: isActive ? '#A29BFE' : '#A1A1AA', textAlign: 'left', transition: '0.2s' }}
             >
-              <span className={`text-sm transition-transform duration-200 ${isActive ? 'scale-110 opacity-100' : 'opacity-60'}`}>{item.icon}</span>
-              <span className="flex-1 text-left">{item.label}</span>
+              <span style={{ opacity: isActive ? 1 : 0.6 }}>{item.icon}</span>
+              <span style={{ flex: 1 }}>{item.label}</span>
             </button>
           );
         })}
 
-        {/* Categories Division Grid (Linear Matrix View) */}
-        <div className="h-px bg-zinc-900/60 my-4 mx-2" />
-        <div className="text-[9px] font-mono tracking-widest text-zinc-600 uppercase px-2.5 mb-2 block">Categories</div>
+        <div style={{ height: 1, background: '#1F1F23', margin: '12px 4px' }} />
+        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#52525B', letterSpacing: '1px', textTransform: 'uppercase', paddingLeft: 8, marginBottom: 4 }}>Categories</span>
         
-        <div className="space-y-0.5">
-          {CATEGORIES.map(c => {
-            const isCatActive = selectedCat === c.id;
-            return (
-              <button 
-                key={c.id} 
-                onClick={() => { setView('category'); setSelectedCat(c.id); if (mobile) setSidebarOpen(false); }} 
-                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-xl text-xs font-medium tracking-wide transition-all duration-200 ${
-                  isCatActive 
-                    ? 'bg-purple-950/20 text-purple-300 border border-purple-500/20 shadow-[0_2px_12px_rgba(108,92,231,0.05)]' 
-                    : 'hover:bg-zinc-900/30 hover:text-zinc-200 border border-transparent'
-                }`}
-              >
-                <span className="flex items-center gap-2.5 truncate">
-                  <span className={`text-xs transition-opacity ${isCatActive ? 'opacity-100' : 'opacity-60'}`}>{c.icon}</span>
-                  <span className="truncate">{c.name}</span>
+        {CATEGORIES.map(c => {
+          const isCatActive = selectedCat === c.id;
+          return (
+            <button 
+              key={c.id} 
+              onClick={() => { setView('category'); setSelectedCat(c.id); if (mobile) setSidebarOpen(false); }} 
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500, background: isCatActive ? 'rgba(108,92,231,0.1)' : 'transparent', color: isCatActive ? '#A29BFE' : '#A1A1AA', transition: '0.2s' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ opacity: isCatActive ? 1 : 0.6 }}>{c.icon}</span>
+                <span>{c.name}</span>
+              </span>
+              {catCounts[c.id] > 0 && (
+                <span style={{ fontSize: 10, fontFamily: 'monospace', background: '#16161A', color: '#52525B', padding: '1px 6px', borderRadius: 6, border: '1px solid #27272A' }}>
+                  {catCounts[c.id]}
                 </span>
-                {catCounts[c.id] > 0 && (
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border transition-all ${
-                    isCatActive 
-                      ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' 
-                      : 'bg-zinc-950/60 border-zinc-900 text-zinc-500'
-                  }`}>
-                    {catCounts[c.id]}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+              )}
+            </button>
+          );
+        })}
 
-        {/* Premium Warning system notification link trigger widget */}
         {!notifEnabled && (
           <>
-            <div className="h-px bg-zinc-900/60 my-4 mx-2" />
-            <button 
-              onClick={enableNotifications} 
-              className="group flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium text-amber-500 hover:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 hover:border-amber-500/20 transition-all duration-200 shadow-sm"
-            >
-              <span className="text-xs group-hover:animate-bounce">🔔</span>
-              <span className="text-left tracking-wide">Sync Notifications</span>
+            <div style={{ height: 1, background: '#1F1F23', margin: '12px 4px' }} />
+            <button onClick={enableNotifications} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.2)', cursor: 'pointer', fontSize: 12, background: 'rgba(245,158,11,0.05)', color: '#F59E0B', fontWeight: 500 }}>
+              🔔 Sync Notifications
             </button>
           </>
         )}
       </div>
 
-      {/* Account Deployment Identity Card (Stripe / Stripe Layout Footer Style) */}
-      <div className="p-4 border-t border-zinc-900/60 bg-zinc-950/30 space-y-3">
-        <div className="flex items-center gap-3 px-1">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600/20 to-indigo-600/20 border border-purple-500/30 flex items-center justify-center text-[11px] text-purple-300 font-mono font-bold tracking-tight shadow-inner">
+      {/* Footer User Block */}
+      <div style={{ padding: '16px', borderTop: '1px solid #1F1F23', background: '#0D0D10', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, #6C5CE7, #A29BFE)', display: 'flex', alignItems: 'center', justifycontent: 'center', fontSize: 12, color: '#FFFFFF', fontWeight: 700, textAlign: 'center', lineHeight: '30px', flexShrink: 0 }}>
             {userName[0].toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-zinc-200 truncate tracking-tight">{userName}</div>
-            <div className="text-[9px] font-mono text-zinc-600 truncate uppercase">Developer Session</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, color: '#FFFFFF', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
+            <div style={{ fontSize: 9, fontFamily: 'monospace', color: '#52525B' }}>SESSION NODE</div>
           </div>
-          <button 
-            onClick={handleLogout} 
-            className="text-[10px] font-medium text-rose-500/70 hover:text-rose-400 hover:bg-rose-500/10 px-2 py-1 rounded-md transition-all border border-transparent hover:border-rose-500/10"
-          >
-            Exit
-          </button>
+          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}>Exit</button>
         </div>
-
-        <button 
-          onClick={() => { setShowAdd(true); if (mobile) setSidebarOpen(false); }} 
-          className="w-full relative group overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-medium py-2.5 rounded-xl shadow-lg shadow-purple-900/20 transition-all duration-300 hover:opacity-95"
-        >
-          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+        <button onClick={() => { setShowAdd(true); if (mobile) setSidebarOpen(false); }} style={{ width: '100%', background: '#6C5CE7', border: 'none', color: '#FFFFFF', padding: '9px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(108,92,231,0.2)' }}>
           Create Directive
         </button>
       </div>
