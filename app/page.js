@@ -153,312 +153,223 @@ function DashboardContent() {
 
   const getTodayTasks = () => tasks.filter(tk => tk.status !== 'done' && (tk.deadline === todayStr() || tk.type === 'daily' || (!tk.deadline && tk.priority === 'high'))).sort((a, b) => ({ high: 0, medium: 1, low: 2 })[a.priority] - ({ high: 0, medium: 1, low: 2 })[b.priority]);
 
-  // Business Logic Variables Kept Intact
   const stats = { total: tasks.length, done: tasks.filter(tk => tk.status === 'done').length, pending: tasks.filter(tk => tk.status !== 'done').length, highPri: tasks.filter(tk => tk.priority === 'high' && tk.status !== 'done').length };
   const catCounts = CATEGORIES.reduce((a, c) => { a[c.id] = tasks.filter(tk => tk.category === c.id && tk.status !== 'done').length; return a; }, {});
 
-  // Progress Calculation for Stripe/Vercel style metrics
   const completionPercentage = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
 
-  if (authLoading) return <div className="min-h-screen bg-[#0A0A0C] flex items-center justify-center text-zinc-400 font-sans tracking-tight">Loading premium setup...</div>;
+  // Premium Custom Inline Theme Object override for true dark styling
+  const dTheme = {
+    bg: '#09090B',
+    sidebar: '#121215',
+    surface: '#16161A',
+    border: '1px solid #27272A',
+    borderLight: '1px solid #1F1F23',
+    textMuted: '#A1A1AA',
+    accent: '#6C5CE7'
+  };
+
+  if (authLoading) return <div style={{ background: dTheme.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: dTheme.textMuted, fontFamily: 'system-ui' }}>Loading Workspace Architecture...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
-  if (loading) return <div className="min-h-screen bg-[#0A0A0C] flex items-center justify-center text-zinc-400 font-sans tracking-tight">Syncing architecture...</div>;
+  if (loading) return <div style={{ background: dTheme.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: dTheme.textMuted, fontFamily: 'system-ui' }}>Syncing Tasks Grid...</div>;
 
   const userName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
   const sidebarProps = { view, setView, setSelectedCat, selectedCat, setSidebarOpen, catCounts, notifEnabled, enableNotifications, userName, handleLogout, setShowAdd };
 
   return (
-    <div className="min-h-screen bg-[#070709] text-zinc-100 flex font-sans selection:bg-purple-500/30 overflow-x-hidden antialiased">
-      {/* Dynamic Glow Accents (Stripe & Motion Vibe) */}
-      <div className="fixed -top-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] pointer-events-none" />
-      <div className="fixed top-1/3 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px] pointer-events-none" />
-
-      {/* Premium Toast notification */}
+    <div style={{ background: dTheme.bg, minHeight: '100vh', display: 'flex', flexDirection: 'row', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#F4F4F5' }}>
+      
+      {/* Toast Alert Frame */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-zinc-900/80 backdrop-blur-md border border-emerald-500/30 text-emerald-400 px-5 py-2.5 rounded-full text-xs font-medium tracking-wide shadow-[0_8px_32px_rgba(0,0,0,0.4)] z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse" />
+        <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', background: '#18181B', border: '1px solid #10B981', color: '#10B981', padding: '10px 24px', borderRadius: 30, fontSize: 12, fontWeight: 600, zIndex: 200, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
           {toast}
         </div>
       )}
 
       {showAdd && <FormPanel form={form} setForm={setForm} editTask={editTask} onSubmit={editTask ? updateTask : addTask} onClose={handleFormClose} isMobile={isMobile} />}
 
-      {/* Desktop Sidebar Shell */}
+      {/* Desktop Sidebar Panel */}
       {!isMobile && (
-        <div className="w-64 bg-[#0D0D11]/60 backdrop-blur-xl border-r border-zinc-800/50 sticky top-0 h-screen flex-shrink-0 z-30">
+        <div style={{ width: 250, background: dTheme.sidebar, borderRight: dTheme.border, position: 'sticky', top: 0, height: '100vh', flexShrink: 0 }}>
           <Sidebar mobile={false} {...sidebarProps} />
         </div>
       )}
 
-      {/* Mobile Drawer */}
+      {/* Mobile Sidebar Frame */}
       {isMobile && sidebarOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="w-72 bg-[#0D0D11] h-full border-r border-zinc-800/80 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
-            <Sidebar mobile={true} {...sidebarProps} />
-          </div>
-          <div className="flex-1 bg-black/60 backdrop-blur-xs" onClick={() => setSidebarOpen(false)} />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
+          <div style={{ width: 270, background: dTheme.sidebar, height: '100%', overflowY: 'auto', borderRight: dTheme.border }}><Sidebar mobile={true} {...sidebarProps} /></div>
+          <div style={{ flex: 1, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setSidebarOpen(false)} />
         </div>
       )}
 
-      {/* Main Container */}
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+      {/* Main Workspace Frame */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'col', height: isMobile ? 'auto' : '100vh', overflowY: 'auto', paddingBottom: isMobile ? 80 : 40 }}>
         
-        {/* Mobile Modern Header */}
+        {/* Mobile Header Navigation strip */}
         {isMobile && (
-          <div className="flex items-center justify-between px-5 py-4 bg-[#0D0D11]/70 backdrop-blur-md sticky top-0 z-40 border-b border-zinc-800/40">
-            <button onClick={() => setSidebarOpen(true)} className="text-zinc-400 hover:text-zinc-100 p-1 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-            </button>
-            <span className="text-xs font-mono uppercase tracking-widest text-zinc-400 bg-zinc-800/40 px-2.5 py-1 rounded-md border border-zinc-700/30">
-              {view === 'today' ? 'Focus' : view === 'ai' ? 'AI Engine' : view === 'all' ? 'Index' : 'Scope'}
-            </span>
-            <div className="flex items-center gap-3">
-              <button onClick={toggleTheme} className="text-zinc-400 p-1 text-sm">{theme === 'dark' ? '☀️' : '🌙'}</button>
-              <button onClick={() => setShowAdd(true)} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white w-8 h-8 rounded-lg font-medium text-lg flex items-center justify-center shadow-lg shadow-purple-900/20">+</button>
+          <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: dTheme.sidebar, position: 'sticky', top: 0, zIndex: 40, borderBottom: dTheme.border }}>
+            <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: dTheme.textMuted, fontSize: 20, cursor: 'pointer' }}>☰</button>
+            <h2 style={{ margin: 0, fontSize: 14, color: '#FFFFFF', fontWeight: 600, letterSpacing: '0.5px' }}>
+              {view === 'today' ? '📋 TODAY\'S FOCUS' : view === 'ai' ? '🤖 AI PLANNER' : '📁 DIRECTORY'}
+            </h2>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <button onClick={toggleTheme} style={{ background: 'none', border: 'none', fontSize: 15, cursor: 'pointer' }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
+              <button onClick={() => setShowAdd(true)} style={{ background: dTheme.accent, border: 'none', color: '#fff', width: 28, height: 28, borderRadius: 8, fontSize: 16, fontWeight: 'bold', cursor: 'pointer' }}>+</button>
             </div>
           </div>
         )}
 
-        {/* Core Content Area */}
-        <div className="flex-1 p-6 md:p-10 max-w-5xl w-full mx-auto space-y-8 pb-24 md:pb-12">
+        {/* Interior Container Layer */}
+        <div style={{ width: '100%', padding: isMobile ? '16px 16px' : '40px 50px', maxWidth: 900, margin: '0 auto' }}>
           
-          {/* Premium Desktop Header (Linear/Vercel style) */}
+          {/* Desktop Upper Dashboard Bar */}
           {!isMobile && (
-            <div className="flex justify-between items-end border-b border-zinc-800/40 pb-6">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32, borderBottom: '1px solid #1F1F23', paddingBottom: 24 }}>
               <div>
-                <div className="text-xs font-mono text-purple-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                  <span className="w-1 h-1 rounded-full bg-purple-400 animate-pulse" />
-                  Workspace / Intelligence
-                </div>
-                <h1 className="text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 via-zinc-200 to-zinc-400">
-                  {view === 'today' ? "Today's Architecture" : view === 'ai' ? 'Autonomous Alignment' : view === 'all' ? 'Global Directory' : 'Filtered Hierarchy'}
-                </h1>
-                <p className="text-sm text-zinc-500 mt-1 font-medium">
-                  {stats.pending} remaining initiatives &bull; {stats.done} parameters synchronized
-                </p>
+                <span style={{ fontSize: 10, fontFamily: 'monospace', color: dTheme.accent, letterSpacing: 2, textTransform: 'uppercase' }}>Workspace Engine / Live</span>
+                <h2 style={{ margin: '4px 0 0', fontSize: 28, color: '#FFFFFF', fontWeight: 700, letterSpacing: '-0.5px' }}>
+                  {view === 'today' ? "Today's Architecture" : view === 'ai' ? 'AI Daily Plan' : view === 'all' ? 'All System Tasks' : 'Filtered Stack'}
+                </h2>
+                <p style={{ margin: '6px 0 0', fontSize: 13, color: dTheme.textMuted }}>{stats.pending} standing operations &bull; {stats.done} parameters complete</p>
               </div>
-              <button onClick={() => setShowAdd(true)} className="relative group overflow-hidden rounded-xl bg-zinc-100 text-zinc-950 text-xs font-medium px-4 py-2.5 transition-all duration-300 hover:bg-zinc-200 shadow-[0_1px_12px_rgba(255,255,255,0.15)] flex items-center gap-2">
-                <svg className="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
-                Deploy Task
-              </button>
+              <button onClick={() => setShowAdd(true)} style={{ background: '#FFFFFF', border: 'none', color: '#09090B', padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 12px rgba(255,255,255,0.1)' }}>+ New Task</button>
             </div>
           )}
 
-          {/* VIEW: TODAY */}
+          {/* BLOCKVIEW: TODAY */}
           {view === 'today' && (
-            <div className="space-y-6 animate-in fade-in duration-500">
-              
-              {/* Premium Dashboard Grid featuring Glassmorphism, Ring Progress & Animated Numbers counter elements */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                
-                {/* Micro Metrics cards */}
-                <div className="md:col-span-3 grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Total Index', value: stats.total, color: 'text-zinc-100', border: 'border-zinc-800/40', glow: '' },
-                    { label: 'Completed', value: stats.done, color: 'text-emerald-400', border: 'border-emerald-500/10', glow: 'bg-emerald-500/5' },
-                    { label: 'Backlog', value: stats.pending, color: 'text-amber-400', border: 'border-amber-500/10', glow: 'bg-amber-500/5' },
-                    { label: 'Critical', value: stats.highPri, color: 'text-rose-400', border: 'border-rose-500/10', glow: 'bg-rose-500/5' }
-                  ].map((s, idx) => (
-                    <div key={idx} className={`bg-[#0B0B0E]/60 backdrop-blur-md border ${s.border} ${s.glow} p-4 rounded-xl flex flex-col justify-between group transition-all duration-300 hover:border-zinc-700/50`}>
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{s.label}</span>
-                      <span className={`text-2xl font-bold tracking-tight mt-3 ${s.color} transition-transform duration-300 group-hover:scale-105 inline-block`}>
-                        {s.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Progress Ring Card (Apple/Linear vibe) */}
-                <div className="bg-[#0B0B0E]/60 backdrop-blur-md border border-zinc-800/40 p-4 rounded-xl flex items-center justify-between gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Efficiency</span>
-                    <span className="text-lg font-semibold tracking-tight text-zinc-200 mt-1">{completionPercentage}% Completed</span>
+            <>
+              {/* Premium Analytics Stats Deck */}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+                {[
+                  { l: 'Total Nodes', v: stats.total, c: '#F4F4F5' },
+                  { l: 'Synchronized', v: stats.done, c: '#10B981' },
+                  { l: 'Backlog Threads', v: stats.pending, c: '#F59E0B' },
+                  { l: 'Critical Priority', v: stats.highPri, c: '#EF4444' }
+                ].map((s, idx) => (
+                  <div key={idx} style={{ background: dTheme.surface, borderRadius: 12, padding: '16px', border: dTheme.borderLight, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 10, color: dTheme.textMuted, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 500 }}>{s.l}</span>
+                    <span style={{ fontSize: 24, fontWeight: 700, color: s.c, marginTop: 8 }}>{s.v}</span>
                   </div>
-                  {/* Inline SVGs for elegant dynamic styling control */}
-                  <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                      <path className="text-zinc-800" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <path className="text-purple-500 transition-all duration-500 ease-out" strokeDasharray={`${completionPercentage}, 100`} strokeWidth="3" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    </svg>
+                ))}
+              </div>
+
+              {/* Progress Bar (Instead of broken raw SVG) */}
+              <div style={{ background: dTheme.surface, border: dTheme.borderLight, padding: 16, borderRadius: 12, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ flex: 1, marginRight: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                    <span style={{ color: dTheme.textMuted, fontWeight: 500 }}>Global Progress Vector</span>
+                    <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{completionPercentage}%</span>
+                  </div>
+                  <div style={{ height: 6, background: '#27272A', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: `${completionPercentage}%`, height: '100%', background: 'linear-gradient(90deg, #6C5CE7, #A29BFE)', borderRadius: 3, transition: 'width 0.4s ease' }} />
                   </div>
                 </div>
               </div>
 
-              {/* AI Trigger Strip */}
-              <button onClick={() => setView('ai')} className="w-full group relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-950/20 via-indigo-950/10 to-transparent p-4 text-left transition-all duration-300 hover:border-purple-500/40 hover:shadow-[0_0_24px_rgba(108,92,231,0.1)]">
-                <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-purple-500/10 to-transparent blur-md pointer-events-none transition-transform group-hover:translate-x-6" />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg animate-pulse">✨</span>
-                    <div>
-                      <h4 className="text-xs font-semibold text-purple-300 tracking-tight">Generate Autonomous Priority Matrix</h4>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">Let LLM orchestrate today's tasks timeline parameters seamlessly.</p>
-                    </div>
-                  </div>
-                  <span className="text-zinc-500 group-hover:text-purple-400 text-sm transition-colors">&rarr;</span>
-                </div>
+              {/* AI Quick Banner Deck */}
+              <button onClick={() => setView('ai')} style={{ display: 'block', width: '100%', padding: '16px', marginBottom: 24, background: 'linear-gradient(135deg, rgba(108,92,231,0.07), rgba(162,155,254,0.03))', border: '1px solid rgba(108,92,231,0.2)', borderRadius: 12, color: '#A29BFE', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', outline: 'none' }}>
+                🤖 Ask AI to organize today's deployment roadmap &rarr;
               </button>
 
-              {/* Horizontal Category Pill Deck (Arc Browser/Linear inspired icons view) */}
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+              {/* Category Pill Hub */}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)', gap: 10, marginBottom: 28 }}>
                 {CATEGORIES.map(c => (
-                  <button key={c.id} onClick={() => { setView('category'); setSelectedCat(c.id); }} className="group text-left bg-[#0A0A0C] border border-zinc-800/50 hover:border-zinc-700 rounded-xl p-3 transition-all duration-200 hover:-translate-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg opacity-80 group-hover:opacity-100 transition-opacity">{c.icon}</span>
-                      <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">{catCounts[c.id] || 0}</span>
-                    </div>
-                    <div className="text-[11px] font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors mt-3 truncate">{c.name}</div>
+                  <button key={c.id} onClick={() => { setView('category'); setSelectedCat(c.id); }} style={{ background: dTheme.surface, border: dTheme.borderLight, borderRadius: 12, padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, textAlign: 'left' }}>
+                    <span style={{ fontSize: 18 }}>{c.icon}</span>
+                    <span style={{ fontSize: 12, color: '#FFFFFF', fontWeight: 500 }}>{c.name}</span>
+                    <span style={{ fontSize: 10, color: c.color || dTheme.textMuted }}>{catCounts[c.id]} pending</span>
                   </button>
                 ))}
               </div>
 
-              {/* Task Section / Activity Timeline Container */}
-              <div className="space-y-3.5">
-                <div className="flex items-center justify-between pb-1">
-                  <h3 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Core Objectives Execution</h3>
-                  <div className="h-px bg-zinc-800/60 flex-1 mx-4" />
-                </div>
-                {getTodayTasks().length === 0 ? (
-                  <Empty text="No structural objectives mapped for this scope. Insert node to begin." />
-                ) : (
-                  <div className="space-y-2.5">
-                    {getTodayTasks().map(tk => (
-                      <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />
-                    ))}
-                  </div>
-                )}
+              {/* Execution Stream Header */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+                <h3 style={{ fontSize: 11, fontFamily: 'monospace', color: dTheme.textMuted, margin: 0, letterSpacing: '1px' }}>CORE PROTOCOLS EXECUTION</h3>
+                <div style={{ flex: 1, height: 1, background: '#1F1F23', marginLeft: 16 }} />
               </div>
-            </div>
+
+              {getTodayTasks().length === 0 && <Empty text="All clear. No operational targets mapped for this timestamp." />}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {getTodayTasks().map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
+              </div>
+            </>
           )}
 
-          {/* VIEW: AI ENGINE */}
+          {/* BLOCKVIEW: AI STRIP */}
           {view === 'ai' && (
-            <div className="max-w-2xl mx-auto py-4 animate-in fade-in duration-300">
+            <div style={{ maxWidth: 650, margin: '0 auto' }}>
               {!aiPlan && !aiLoading && (
-                <div className="border border-zinc-800/60 bg-[#0B0B0E]/40 backdrop-blur-md rounded-2xl p-8 text-center relative overflow-hidden">
-                  <div className="w-14 h-14 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto text-xl text-purple-400 mb-4 border border-purple-500/20">🤖</div>
-                  <h3 className="text-base font-semibold text-zinc-200 tracking-tight">AI Pipeline Analysis</h3>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-2 leading-relaxed">
-                    System will pull structural properties across active threads to generate a unified tactical roadmap layout.
-                  </p>
-                  <button onClick={getAiPlan} className="mt-6 bg-zinc-100 text-zinc-950 text-xs font-semibold px-5 py-2.5 rounded-xl hover:bg-zinc-200 transition-all shadow-md">
-                    Execute Engine Map
-                  </button>
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: dTheme.surface, border: dTheme.border, borderRadius: 16 }}>
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>🧠</div>
+                  <h4 style={{ color: '#F4F4F5', fontSize: 16, margin: '0 0 6px' }}>Heuristic AI Analysis</h4>
+                  <p style={{ color: dTheme.textMuted, margin: '0 0 20px', fontSize: 13, lineHeight: 1.6 }}>System will compute details from active backlogs to render an optimized strategy.</p>
+                  <button onClick={getAiPlan} style={{ background: '#FFFFFF', border: 'none', color: '#09090B', padding: '12px 28px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Compute Daily Map</button>
                 </div>
               )}
-
-              {aiLoading && (
-                <div className="py-16 text-center space-y-3">
-                  <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs font-mono text-zinc-500 tracking-wider uppercase">Running heuristic models...</p>
-                </div>
-              )}
-
+              {aiLoading && <div style={{ textAlign: 'center', padding: 40, color: dTheme.textMuted, fontSize: 13 }}>🤖 Running tactical engine models...</div>}
               {aiPlan && (
-                <div className="bg-[#0B0B0E]/80 backdrop-blur-md border border-purple-500/20 rounded-xl p-6 shadow-[0_12px_40px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200">
-                  <div className="flex justify-between items-center border-b border-zinc-800/60 pb-3 mb-4">
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-purple-400">Validated Recommendation System</span>
-                    <button onClick={getAiPlan} className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18"/></svg>
-                      Recalibrate
-                    </button>
-                  </div>
-                  <div className="text-xs text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap selection:bg-purple-500/40 bg-zinc-950/40 p-4 rounded-lg border border-zinc-900">
-                    {aiPlan}
-                  </div>
+                <div style={{ background: dTheme.surface, borderRadius: 16, padding: 24, border: '1px solid rgba(108,92,231,0.2)' }}>
+                  <div style={{ color: '#A29BFE', fontSize: 11, fontFamily: 'monospace', marginBottom: 12, fontWeight: 700, letterSpacing: 1 }}>SYSTEM ARCHITECTURE INPUTS</div>
+                  <div style={{ color: '#E4E4E7', lineHeight: 1.7, whiteSpace: 'pre-wrap', fontSize: 13, background: '#09090B', padding: 16, borderRadius: 8, border: dTheme.borderLight, fontFamily: 'monospace' }}>{aiPlan}</div>
+                  <button onClick={getAiPlan} style={{ marginTop: 16, padding: '8px 16px', borderRadius: 8, border: '1px solid #27272A', background: 'transparent', color: dTheme.textMuted, fontSize: 12, cursor: 'pointer' }}>🔄 Recalibrate</button>
                 </div>
               )}
             </div>
           )}
 
-          {/* VIEW: CATEGORY (Sleek Index Lists) */}
+          {/* BLOCKVIEW: INDIVIDUAL SPECIFIC CATEGORY */}
           {view === 'category' && selectedCat && (
-            <div className="space-y-5 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0B0E]/40 border border-zinc-800/40 p-3 rounded-xl backdrop-blur-md">
-                <div className="flex gap-1.5">
-                  {['all', 'pending', 'done'].map(f => (
-                    <button key={f} onClick={() => setFilter(f)} className={`text-[11px] font-medium tracking-wide px-3.5 py-1.5 rounded-lg transition-all border ${filter === f ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>
-                      {f.charAt(0).toUpperCase() + f.slice(1)}
-                    </button>
-                  ))}
-                </div>
-                {(selectedCat === 'clients' || selectedCat === 'websites') && (
-                  <div className="relative">
-                    <input 
-                      className="bg-zinc-950 border border-zinc-800 focus:border-zinc-700 rounded-lg text-xs px-3.5 py-1.5 w-full sm:w-60 focus:outline-none placeholder-zinc-600 text-zinc-300 transition-colors"
-                      placeholder={'Filter node parameters...'} 
-                      value={subFilter} 
-                      onChange={e => setSubFilter(e.target.value)} 
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {getFiltered().length === 0 ? (
-                  <Empty text="No active nodes found inside this sequence matrix." />
-                ) : (
-                  getFiltered().map(tk => (
-                    <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* VIEW: GLOBAL ALL INDEX */}
-          {view === 'all' && (
-            <div className="space-y-8 animate-in fade-in duration-300">
-              <div className="bg-[#0B0B0E]/40 border border-zinc-800/40 p-3 rounded-xl backdrop-blur-md inline-flex gap-1.5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', gap: 8, background: dTheme.surface, padding: 8, borderRadius: 12, width: 'fit-content', border: dTheme.borderLight }}>
                 {['all', 'pending', 'done'].map(f => (
-                  <button key={f} onClick={() => setFilter(f)} className={`text-[11px] font-medium tracking-wide px-3.5 py-1.5 rounded-lg transition-all border ${filter === f ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>
-                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
+                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 16px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: 'none', background: filter === f ? '#27272A' : 'transparent', color: filter === f ? '#FFFFFF' : dTheme.textMuted, fontWeight: 500 }}>{f.toUpperCase()}</button>
                 ))}
               </div>
-
-              <div className="space-y-6">
-                {CATEGORIES.map(cat => { 
-                  const ct = getFiltered().filter(tk => tk.category === cat.id); 
-                  if (!ct.length) return null; 
-                  return (
-                    <div key={cat.id} className="space-y-2.5">
-                      <h3 className="text-xs font-semibold flex items-center gap-2 text-zinc-400 px-1">
-                        <span>{cat.icon}</span>
-                        <span>{cat.name}</span>
-                        <span className="text-[10px] font-mono text-zinc-600 bg-zinc-900/60 px-1.5 py-0.2 rounded border border-zinc-800/50">{ct.length}</span>
-                      </h3>
-                      <div className="space-y-2">
-                        {ct.map(tk => (
-                          <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />
-                        ))}
-                      </div>
-                    </div>
-                  ); 
-                })}
-                {getFiltered().length === 0 && <Empty text="Zero sequence records registered globally." />}
+              {(selectedCat === 'clients' || selectedCat === 'websites') && (
+                <input 
+                  style={{ background: '#09090B', border: dTheme.border, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#FFF', outline: 'none' }} 
+                  placeholder={'Search filter nodes...'} 
+                  value={subFilter} 
+                  onChange={e => setSubFilter(e.target.value)} 
+                />
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {getFiltered().length === 0 && <Empty text="No data streams allocated inside this target sequence." />}
+                {getFiltered().map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
               </div>
             </div>
           )}
 
+          {/* BLOCKVIEW: SYSTEM MASS INDEX DIAL */}
+          {view === 'all' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', gap: 8, background: dTheme.surface, padding: 8, borderRadius: 12, width: 'fit-content', border: dTheme.borderLight }}>
+                {['all', 'pending', 'done'].map(f => (
+                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 16px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: 'none', background: filter === f ? '#27272A' : 'transparent', color: filter === f ? '#FFFFFF' : dTheme.textMuted, fontWeight: 500 }}>{f.toUpperCase()}</button>
+                ))}
+              </div>
+              {CATEGORIES.map(cat => { 
+                const ct = getFiltered().filter(tk => tk.category === cat.id); 
+                if (!ct.length) return null; 
+                return (
+                  <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <h3 style={{ fontSize: 12, color: cat.color || '#FFF', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{cat.icon}</span><span>{cat.name}</span>
+                      <span style={{ fontSize: 10, background: '#27272A', color: dTheme.textMuted, padding: '2px 6px', borderRadius: 6 }}>{ct.length}</span>
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {ct.map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
+                    </div>
+                  </div>
+                ); 
+              })}
+              {getFiltered().length === 0 && <Empty text="Global directory registry empty." />}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Mobile Glassmorphism Fixed Dock */}
-      {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#0A0A0C]/80 backdrop-blur-lg border-t border-zinc-800/60 flex justify-around py-2.5 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-          {[
-            { id: 'today', icon: '📋', label: 'Focus' },
-            { id: 'all', icon: '📁', label: 'Index' },
-            { id: 'ai', icon: '🤖', label: 'AI Engine' }
-          ].map(item => (
-            <button key={item.id} onClick={() => { setView(item.id); setSelectedCat(null); setSidebarOpen(false); }} className={`flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-all ${view === item.id ? 'text-purple-400' : 'text-zinc-500'}`}>
-              <span className="text-lg">{item.icon}</span>
-              <span className="text-[9px] font-medium tracking-tight">{item.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
