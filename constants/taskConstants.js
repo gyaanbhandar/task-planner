@@ -6,61 +6,41 @@ export const CATEGORIES = [
   { id: 'leadgen', name: 'Lead Gen', icon: '🎯', color: '#e17055' },
 ];
 
-// Linear Premium Mono Tag Color Mapping
 export const PRIORITY_COLORS = { 
-  high: '#FF6B6B', 
-  medium: '#FFA502', 
-  low: '#A4B0BE' 
+  high: '#ff6b6b', 
+  medium: '#ffa502', 
+  low: '#a4b0be' 
 };
 
-// Premium SaaS Glassmorphism Color Palette Variables
 export const THEMES = {
   dark: {
-    bg: '#070709',          // Pitch Black Slate Background (Linear/Vercel jaisa)
-    surface: '#0F0F13',     // Matte Dark Raised Surface Panel
-    sidebar: '#0D0D11',     // Split Deep Core Menu Sidebar
-    border: '#1F1F26',      // Premium Ultra Thin Subtle Lines Border
-    borderAlt: '#272732',   // Active Input Highlight Borders
-    text: '#F4F4F5',        // Sharp Crisp High-contrast Text Font
-    textSec: '#71717A',     // Modern Muted Slate Description Text
-    textDim: '#42424F',     // Monospace Stamp Grid Inner Captions
-    inputBg: '#050507',     // Solid Inner Inset Field
+    bg: '#070709',
+    surface: '#0F0F13',
+    sidebar: '#0D0D11',
+    border: '#1F1F26',
+    borderAlt: '#272732',
+    text: '#F4F4F5',
+    textSec: '#71717A',
+    textDim: '#42424F',
+    inputBg: '#050507',
   },
   light: {
-    bg: '#F5F5F7', 
-    surface: '#FFFFFF', 
-    sidebar: '#FAFAFA', 
-    border: '#E5E5EA', 
-    borderAlt: '#D1D1D6',
-    text: '#1A1A2E', 
-    textSec: '#636366', 
-    textDim: '#8E8E93',
-    inputBg: '#F5F5F7',
-  }
+    bg: '#FAFAFA',
+    surface: '#FFFFFF',
+    sidebar: '#F4F4F5',
+    border: '#E4E4E7',
+    borderAlt: '#E4E4E7',
+    text: '#09090B',
+    textSec: '#71717A',
+    textDim: '#A1A1AA',
+    inputBg: '#FFFFFF',
+  },
 };
 
-export const getS = (t) => ({
-  input: {
-    width: '100%',
-    padding: '11px 14px',
-    borderRadius: '10px',
-    background: t.inputBg,
-    border: '1px solid ' + t.border,
-    color: t.text,
-    fontSize: '13px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    fontFamily: 'inherit',
-    transition: 'border 0.2s ease',
-  },
-  label: {
-    fontSize: '10px',
-    fontFamily: 'monospace',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    color: t.textSec,
-    marginBottom: '4px',
-    marginTop: '10px',
-    fontWeight: '600',
-  },
-});
+export function getS(t) {
+  return {
+    input: { background: t.inputBg, border: '1px solid ' + t.borderAlt, borderRadius: 10, padding: '11px 14px', color: t.text, fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' },
+    label: { fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '1px', color: t.textSec, fontWeight: 600 },
+    primaryBtn: { background: '#6C5CE7', border: 'none', borderRadius: 10, padding: '12px 0', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%' },
+  };
+}
