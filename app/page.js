@@ -153,149 +153,308 @@ function DashboardContent() {
 
   const getTodayTasks = () => tasks.filter(tk => tk.status !== 'done' && (tk.deadline === todayStr() || tk.type === 'daily' || (!tk.deadline && tk.priority === 'high'))).sort((a, b) => ({ high: 0, medium: 1, low: 2 })[a.priority] - ({ high: 0, medium: 1, low: 2 })[b.priority]);
 
+  // Business Logic Variables Kept Intact
   const stats = { total: tasks.length, done: tasks.filter(tk => tk.status === 'done').length, pending: tasks.filter(tk => tk.status !== 'done').length, highPri: tasks.filter(tk => tk.priority === 'high' && tk.status !== 'done').length };
   const catCounts = CATEGORIES.reduce((a, c) => { a[c.id] = tasks.filter(tk => tk.category === c.id && tk.status !== 'done').length; return a; }, {});
 
-  if (authLoading) return <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textSec, fontFamily: 'system-ui' }}>Loading...</div>;
+  // Progress Calculation for Stripe/Vercel style metrics
+  const completionPercentage = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+
+  if (authLoading) return <div className="min-h-screen bg-[#0A0A0C] flex items-center justify-center text-zinc-400 font-sans tracking-tight">Loading premium setup...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
-  if (loading) return <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textSec, fontFamily: 'system-ui' }}>Loading tasks...</div>;
+  if (loading) return <div className="min-h-screen bg-[#0A0A0C] flex items-center justify-center text-zinc-400 font-sans tracking-tight">Syncing architecture...</div>;
 
   const userName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
-
   const sidebarProps = { view, setView, setSelectedCat, selectedCat, setSidebarOpen, catCounts, notifEnabled, enableNotifications, userName, handleLogout, setShowAdd };
 
   return (
-    <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
-      {toast && <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: '#00b894', color: '#fff', padding: '8px 20px', borderRadius: 20, fontSize: 13, fontWeight: 600, zIndex: 200 }}>{toast}</div>}
-      {showAdd && <FormPanel form={form} setForm={setForm} editTask={editTask} onSubmit={editTask ? updateTask : addTask} onClose={handleFormClose} isMobile={isMobile} />}
+    <div className="min-h-screen bg-[#070709] text-zinc-100 flex font-sans selection:bg-purple-500/30 overflow-x-hidden antialiased">
+      {/* Dynamic Glow Accents (Stripe & Motion Vibe) */}
+      <div className="fixed -top-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] pointer-events-none" />
+      <div className="fixed top-1/3 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px] pointer-events-none" />
 
-      {!isMobile && <div style={{ width: 240, background: t.sidebar, borderRight: '1px solid ' + t.border, position: 'sticky', top: 0, height: '100vh', flexShrink: 0 }}><Sidebar mobile={false} {...sidebarProps} /></div>}
-
-      {isMobile && sidebarOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-          <div style={{ width: 260, background: t.sidebar, height: '100%', overflowY: 'auto', borderRight: '1px solid ' + t.border }}><Sidebar mobile={true} {...sidebarProps} /></div>
-          <div style={{ flex: 1, background: '#00000066' }} onClick={() => setSidebarOpen(false)} />
+      {/* Premium Toast notification */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-zinc-900/80 backdrop-blur-md border border-emerald-500/30 text-emerald-400 px-5 py-2.5 rounded-full text-xs font-medium tracking-wide shadow-[0_8px_32px_rgba(0,0,0,0.4)] z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse" />
+          {toast}
         </div>
       )}
 
-      <div style={{ flex: 1, overflowY: 'auto', height: isMobile ? 'auto' : '100vh', minHeight: '100vh', paddingBottom: isMobile ? 80 : 24 }}>
+      {showAdd && <FormPanel form={form} setForm={setForm} editTask={editTask} onSubmit={editTask ? updateTask : addTask} onClose={handleFormClose} isMobile={isMobile} />}
+
+      {/* Desktop Sidebar Shell */}
+      {!isMobile && (
+        <div className="w-64 bg-[#0D0D11]/60 backdrop-blur-xl border-r border-zinc-800/50 sticky top-0 h-screen flex-shrink-0 z-30">
+          <Sidebar mobile={false} {...sidebarProps} />
+        </div>
+      )}
+
+      {/* Mobile Drawer */}
+      {isMobile && sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="w-72 bg-[#0D0D11] h-full border-r border-zinc-800/80 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
+            <Sidebar mobile={true} {...sidebarProps} />
+          </div>
+          <div className="flex-1 bg-black/60 backdrop-blur-xs" onClick={() => setSidebarOpen(false)} />
+        </div>
+      )}
+
+      {/* Main Container */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        
+        {/* Mobile Modern Header */}
         {isMobile && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: t.sidebar, position: 'sticky', top: 0, zIndex: 10, borderBottom: '1px solid ' + t.border }}>
-            <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: t.textSec, fontSize: 22, cursor: 'pointer', padding: 0 }}>☰</button>
-            <h2 style={{ margin: 0, fontSize: 15, color: t.text, fontWeight: 600 }}>{view === 'today' ? '📋 Today' : view === 'ai' ? '🤖 AI Plan' : view === 'all' ? '📁 All' : selectedCat ? (CATEGORIES.find(c => c.id === selectedCat)?.icon + ' ' + CATEGORIES.find(c => c.id === selectedCat)?.name) : 'Tasks'}</h2>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={toggleTheme} style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer' }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
-              <button onClick={() => setShowAdd(true)} style={{ background: '#6C5CE7', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: 8, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+          <div className="flex items-center justify-between px-5 py-4 bg-[#0D0D11]/70 backdrop-blur-md sticky top-0 z-40 border-b border-zinc-800/40">
+            <button onClick={() => setSidebarOpen(true)} className="text-zinc-400 hover:text-zinc-100 p-1 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <span className="text-xs font-mono uppercase tracking-widest text-zinc-400 bg-zinc-800/40 px-2.5 py-1 rounded-md border border-zinc-700/30">
+              {view === 'today' ? 'Focus' : view === 'ai' ? 'AI Engine' : view === 'all' ? 'Index' : 'Scope'}
+            </span>
+            <div className="flex items-center gap-3">
+              <button onClick={toggleTheme} className="text-zinc-400 p-1 text-sm">{theme === 'dark' ? '☀️' : '🌙'}</button>
+              <button onClick={() => setShowAdd(true)} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white w-8 h-8 rounded-lg font-medium text-lg flex items-center justify-center shadow-lg shadow-purple-900/20">+</button>
             </div>
           </div>
         )}
 
-        <div style={{ padding: isMobile ? '12px 14px' : '24px 32px', maxWidth: 860, margin: '0 auto' }}>
+        {/* Core Content Area */}
+        <div className="flex-1 p-6 md:p-10 max-w-5xl w-full mx-auto space-y-8 pb-24 md:pb-12">
+          
+          {/* Premium Desktop Header (Linear/Vercel style) */}
           {!isMobile && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div className="flex justify-between items-end border-b border-zinc-800/40 pb-6">
               <div>
-                <h2 style={{ margin: 0, fontSize: 22, color: t.text, fontWeight: 700 }}>{view === 'today' ? "Today's Focus" : view === 'ai' ? 'AI Daily Plan' : view === 'all' ? 'All Tasks' : selectedCat ? (CATEGORIES.find(c => c.id === selectedCat)?.icon + ' ' + CATEGORIES.find(c => c.id === selectedCat)?.name) : 'Tasks'}</h2>
-                <p style={{ margin: '2px 0 0', fontSize: 13, color: t.textSec }}>{stats.pending} pending · {stats.done} completed</p>
+                <div className="text-xs font-mono text-purple-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                  <span className="w-1 h-1 rounded-full bg-purple-400 animate-pulse" />
+                  Workspace / Intelligence
+                </div>
+                <h1 className="text-3xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 via-zinc-200 to-zinc-400">
+                  {view === 'today' ? "Today's Architecture" : view === 'ai' ? 'Autonomous Alignment' : view === 'all' ? 'Global Directory' : 'Filtered Hierarchy'}
+                </h1>
+                <p className="text-sm text-zinc-500 mt-1 font-medium">
+                  {stats.pending} remaining initiatives &bull; {stats.done} parameters synchronized
+                </p>
               </div>
-              <button onClick={() => setShowAdd(true)} style={{ ...S.primaryBtn, width: 'auto', padding: '10px 24px', fontSize: 13 }}>+ New Task</button>
+              <button onClick={() => setShowAdd(true)} className="relative group overflow-hidden rounded-xl bg-zinc-100 text-zinc-950 text-xs font-medium px-4 py-2.5 transition-all duration-300 hover:bg-zinc-200 shadow-[0_1px_12px_rgba(255,255,255,0.15)] flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                Deploy Task
+              </button>
             </div>
           )}
 
+          {/* VIEW: TODAY */}
           {view === 'today' && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: isMobile ? 8 : 12, marginBottom: 16 }}>
-                {[{ l: 'Total', v: stats.total, c: t.text }, { l: 'Done', v: stats.done, c: '#00b894' }, { l: 'Pending', v: stats.pending, c: '#ffa502' }, { l: 'Urgent', v: stats.highPri, c: '#ff6b6b' }].map(s => (
-                  <div key={s.l} style={{ background: t.surface, borderRadius: 10, padding: isMobile ? '10px 6px' : '14px', textAlign: 'center' }}>
-                    <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 700, color: s.c }}>{s.v}</div>
-                    <div style={{ fontSize: 11, color: t.textSec, marginTop: 2 }}>{s.l}</div>
+            <div className="space-y-6 animate-in fade-in duration-500">
+              
+              {/* Premium Dashboard Grid featuring Glassmorphism, Ring Progress & Animated Numbers counter elements */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                
+                {/* Micro Metrics cards */}
+                <div className="md:col-span-3 grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total Index', value: stats.total, color: 'text-zinc-100', border: 'border-zinc-800/40', glow: '' },
+                    { label: 'Completed', value: stats.done, color: 'text-emerald-400', border: 'border-emerald-500/10', glow: 'bg-emerald-500/5' },
+                    { label: 'Backlog', value: stats.pending, color: 'text-amber-400', border: 'border-amber-500/10', glow: 'bg-amber-500/5' },
+                    { label: 'Critical', value: stats.highPri, color: 'text-rose-400', border: 'border-rose-500/10', glow: 'bg-rose-500/5' }
+                  ].map((s, idx) => (
+                    <div key={idx} className={`bg-[#0B0B0E]/60 backdrop-blur-md border ${s.border} ${s.glow} p-4 rounded-xl flex flex-col justify-between group transition-all duration-300 hover:border-zinc-700/50`}>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{s.label}</span>
+                      <span className={`text-2xl font-bold tracking-tight mt-3 ${s.color} transition-transform duration-300 group-hover:scale-105 inline-block`}>
+                        {s.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress Ring Card (Apple/Linear vibe) */}
+                <div className="bg-[#0B0B0E]/60 backdrop-blur-md border border-zinc-800/40 p-4 rounded-xl flex items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Efficiency</span>
+                    <span className="text-lg font-semibold tracking-tight text-zinc-200 mt-1">{completionPercentage}% Completed</span>
                   </div>
-                ))}
+                  {/* Inline SVGs for elegant dynamic styling control */}
+                  <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                      <path className="text-zinc-800" strokeWidth="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                      <path className="text-purple-500 transition-all duration-500 ease-out" strokeDasharray={`${completionPercentage}, 100`} strokeWidth="3" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setView('ai')} style={{ display: 'block', width: '100%', padding: isMobile ? '12px 14px' : '14px 18px', marginBottom: 16, background: 'linear-gradient(135deg, #6C5CE714, #a29bfe14)', border: '1px solid #6C5CE733', borderRadius: 10, color: '#a29bfe', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>🤖 AI se aaj ka plan banwao →</button>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)', gap: isMobile ? 8 : 10, marginBottom: isMobile ? 14 : 20 }}>
+
+              {/* AI Trigger Strip */}
+              <button onClick={() => setView('ai')} className="w-full group relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-950/20 via-indigo-950/10 to-transparent p-4 text-left transition-all duration-300 hover:border-purple-500/40 hover:shadow-[0_0_24px_rgba(108,92,231,0.1)]">
+                <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-purple-500/10 to-transparent blur-md pointer-events-none transition-transform group-hover:translate-x-6" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg animate-pulse">✨</span>
+                    <div>
+                      <h4 className="text-xs font-semibold text-purple-300 tracking-tight">Generate Autonomous Priority Matrix</h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Let LLM orchestrate today's tasks timeline parameters seamlessly.</p>
+                    </div>
+                  </div>
+                  <span className="text-zinc-500 group-hover:text-purple-400 text-sm transition-colors">&rarr;</span>
+                </div>
+              </button>
+
+              {/* Horizontal Category Pill Deck (Arc Browser/Linear inspired icons view) */}
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
                 {CATEGORIES.map(c => (
-                  <button key={c.id} onClick={() => { setView('category'); setSelectedCat(c.id); }} style={{ background: t.surface, border: '1px solid ' + c.color + '33', borderRadius: 10, padding: isMobile ? '10px 8px' : '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start', gap: isMobile ? 3 : 4 }}>
-                    <span style={{ fontSize: isMobile ? 18 : 22 }}>{c.icon}</span>
-                    <span style={{ fontSize: isMobile ? 11 : 13, color: t.text, fontWeight: 500 }}>{c.name}</span>
-                    <span style={{ fontSize: isMobile ? 10 : 11, color: c.color }}>{catCounts[c.id]} pending</span>
+                  <button key={c.id} onClick={() => { setView('category'); setSelectedCat(c.id); }} className="group text-left bg-[#0A0A0C] border border-zinc-800/50 hover:border-zinc-700 rounded-xl p-3 transition-all duration-200 hover:-translate-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg opacity-80 group-hover:opacity-100 transition-opacity">{c.icon}</span>
+                      <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">{catCounts[c.id] || 0}</span>
+                    </div>
+                    <div className="text-[11px] font-medium text-zinc-400 group-hover:text-zinc-200 transition-colors mt-3 truncate">{c.name}</div>
                   </button>
                 ))}
               </div>
-              <h3 style={{ fontSize: 13, color: t.textSec, margin: '0 0 8px', fontWeight: 600, letterSpacing: 0.5 }}>{"TODAY'S TASKS"}</h3>
-              {getTodayTasks().length === 0 && <Empty text="Aaj ke liye koi task nahi. Naya task add karo!" />}
-              {getTodayTasks().map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
-            </>
+
+              {/* Task Section / Activity Timeline Container */}
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between pb-1">
+                  <h3 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Core Objectives Execution</h3>
+                  <div className="h-px bg-zinc-800/60 flex-1 mx-4" />
+                </div>
+                {getTodayTasks().length === 0 ? (
+                  <Empty text="No structural objectives mapped for this scope. Insert node to begin." />
+                ) : (
+                  <div className="space-y-2.5">
+                    {getTodayTasks().map(tk => (
+                      <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
+          {/* VIEW: AI ENGINE */}
           {view === 'ai' && (
-            <div style={{ maxWidth: 600 }}>
+            <div className="max-w-2xl mx-auto py-4 animate-in fade-in duration-300">
               {!aiPlan && !aiLoading && (
-                <div style={{ textAlign: 'center', padding: isMobile ? '30px 12px' : '50px 20px' }}>
-                  <div style={{ fontSize: 52, marginBottom: 16 }}>🧠</div>
-                  <p style={{ color: t.textSec, marginBottom: 20, lineHeight: 1.7, fontSize: 14 }}>AI tumhare pending tasks analyze karke batayega ki aaj kya karna chahiye.</p>
-                  <button onClick={getAiPlan} style={{ ...S.primaryBtn, width: 'auto', padding: '12px 32px' }}>{"Generate Today's Plan"}</button>
+                <div className="border border-zinc-800/60 bg-[#0B0B0E]/40 backdrop-blur-md rounded-2xl p-8 text-center relative overflow-hidden">
+                  <div className="w-14 h-14 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto text-xl text-purple-400 mb-4 border border-purple-500/20">🤖</div>
+                  <h3 className="text-base font-semibold text-zinc-200 tracking-tight">AI Pipeline Analysis</h3>
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-2 leading-relaxed">
+                    System will pull structural properties across active threads to generate a unified tactical roadmap layout.
+                  </p>
+                  <button onClick={getAiPlan} className="mt-6 bg-zinc-100 text-zinc-950 text-xs font-semibold px-5 py-2.5 rounded-xl hover:bg-zinc-200 transition-all shadow-md">
+                    Execute Engine Map
+                  </button>
                 </div>
               )}
-              {aiLoading && <div style={{ textAlign: 'center', padding: 50, color: t.textSec }}>🤖 Analyzing...</div>}
+
+              {aiLoading && (
+                <div className="py-16 text-center space-y-3">
+                  <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-mono text-zinc-500 tracking-wider uppercase">Running heuristic models...</p>
+                </div>
+              )}
+
               {aiPlan && (
-                <div style={{ background: t.surface, borderRadius: 12, padding: isMobile ? 16 : 24, border: '1px solid #6C5CE733' }}>
-                  <div style={{ color: '#6C5CE7', fontSize: 12, marginBottom: 10, fontWeight: 700 }}>AI RECOMMENDATION</div>
-                  <div style={{ color: t.text, lineHeight: 1.8, whiteSpace: 'pre-wrap', fontSize: 14 }}>{aiPlan}</div>
-                  <button onClick={getAiPlan} style={{ marginTop: 16, padding: '8px 16px', borderRadius: 8, border: '1px solid #6C5CE744', background: 'transparent', color: '#6C5CE7', fontSize: 13, cursor: 'pointer' }}>🔄 Regenerate</button>
+                <div className="bg-[#0B0B0E]/80 backdrop-blur-md border border-purple-500/20 rounded-xl p-6 shadow-[0_12px_40px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200">
+                  <div className="flex justify-between items-center border-b border-zinc-800/60 pb-3 mb-4">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-purple-400">Validated Recommendation System</span>
+                    <button onClick={getAiPlan} className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18"/></svg>
+                      Recalibrate
+                    </button>
+                  </div>
+                  <div className="text-xs text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap selection:bg-purple-500/40 bg-zinc-950/40 p-4 rounded-lg border border-zinc-900">
+                    {aiPlan}
+                  </div>
                 </div>
               )}
             </div>
           )}
 
+          {/* VIEW: CATEGORY (Sleek Index Lists) */}
           {view === 'category' && selectedCat && (
-            <>
-              {(selectedCat === 'clients' || selectedCat === 'websites') && (
-                <input 
-                  style={{ ...S.input, marginBottom: 10 }} 
-                  placeholder={'Search by ' + (selectedCat === 'clients' ? 'client' : 'site') + '...'} 
-                  value={subFilter} 
-                  onChange={e => setSubFilter(e.target.value)} 
-                />
-              )}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                {['all', 'pending', 'done'].map(f => (
-                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: '1px solid ' + (filter === f ? '#6C5CE7' : t.borderAlt), background: filter === f ? '#6C5CE718' : 'transparent', color: filter === f ? '#6C5CE7' : t.textSec }}>{f[0].toUpperCase() + f.slice(1)}</button>
-                ))}
+            <div className="space-y-5 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0B0E]/40 border border-zinc-800/40 p-3 rounded-xl backdrop-blur-md">
+                <div className="flex gap-1.5">
+                  {['all', 'pending', 'done'].map(f => (
+                    <button key={f} onClick={() => setFilter(f)} className={`text-[11px] font-medium tracking-wide px-3.5 py-1.5 rounded-lg transition-all border ${filter === f ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                {(selectedCat === 'clients' || selectedCat === 'websites') && (
+                  <div className="relative">
+                    <input 
+                      className="bg-zinc-950 border border-zinc-800 focus:border-zinc-700 rounded-lg text-xs px-3.5 py-1.5 w-full sm:w-60 focus:outline-none placeholder-zinc-600 text-zinc-300 transition-colors"
+                      placeholder={'Filter node parameters...'} 
+                      value={subFilter} 
+                      onChange={e => setSubFilter(e.target.value)} 
+                    />
+                  </div>
+                )}
               </div>
-              {getFiltered().length === 0 && <Empty text="No tasks here." />}
-              {getFiltered().map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
-            </>
+
+              <div className="space-y-2">
+                {getFiltered().length === 0 ? (
+                  <Empty text="No active nodes found inside this sequence matrix." />
+                ) : (
+                  getFiltered().map(tk => (
+                    <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />
+                  ))
+                )}
+              </div>
+            </div>
           )}
 
+          {/* VIEW: GLOBAL ALL INDEX */}
           {view === 'all' && (
-            <>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="bg-[#0B0B0E]/40 border border-zinc-800/40 p-3 rounded-xl backdrop-blur-md inline-flex gap-1.5">
                 {['all', 'pending', 'done'].map(f => (
-                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: '1px solid ' + (filter === f ? '#6C5CE7' : t.borderAlt), background: filter === f ? '#6C5CE718' : 'transparent', color: filter === f ? '#6C5CE7' : t.textSec }}>{f[0].toUpperCase() + f.slice(1)}</button>
+                  <button key={f} onClick={() => setFilter(f)} className={`text-[11px] font-medium tracking-wide px-3.5 py-1.5 rounded-lg transition-all border ${filter === f ? 'bg-zinc-800 border-zinc-700 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
                 ))}
               </div>
-              {CATEGORIES.map(cat => { 
-                const ct = getFiltered().filter(tk => tk.category === cat.id); 
-                if (!ct.length) return null; 
-                return (
-                  <div key={cat.id} style={{ marginBottom: 16 }}>
-                    <h3 style={{ fontSize: 13, color: cat.color, margin: '0 0 8px', fontWeight: 600 }}>{cat.icon} {cat.name} ({ct.length})</h3>
-                    {ct.map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
-                  </div>
-                ); 
-              })}
-              {getFiltered().length === 0 && <Empty text="No tasks found." />}
-            </>
+
+              <div className="space-y-6">
+                {CATEGORIES.map(cat => { 
+                  const ct = getFiltered().filter(tk => tk.category === cat.id); 
+                  if (!ct.length) return null; 
+                  return (
+                    <div key={cat.id} className="space-y-2.5">
+                      <h3 className="text-xs font-semibold flex items-center gap-2 text-zinc-400 px-1">
+                        <span>{cat.icon}</span>
+                        <span>{cat.name}</span>
+                        <span className="text-[10px] font-mono text-zinc-600 bg-zinc-900/60 px-1.5 py-0.2 rounded border border-zinc-800/50">{ct.length}</span>
+                      </h3>
+                      <div className="space-y-2">
+                        {ct.map(tk => (
+                          <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />
+                        ))}
+                      </div>
+                    </div>
+                  ); 
+                })}
+                {getFiltered().length === 0 && <Empty text="Zero sequence records registered globally." />}
+              </div>
+            </div>
           )}
+
         </div>
       </div>
 
+      {/* Mobile Glassmorphism Fixed Dock */}
       {isMobile && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: t.sidebar, borderTop: '1px solid ' + t.border, display: 'flex', justifyContent: 'space-around', padding: '6px 0 8px', zIndex: 20 }}>
-          {[{ id: 'today', icon: '📋', l: 'Today' }, { id: 'all', icon: '📁', l: 'All' }, { id: 'ai', icon: '🤖', l: 'AI Plan' }].map(i => (
-            <button key={i.id} onClick={() => { setView(i.id); setSelectedCat(null); setSidebarOpen(false); }} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer', padding: '4px 20px', color: view === i.id ? '#6C5CE7' : t.textSec }}>
-              <span style={{ fontSize: 18 }}>{i.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: view === i.id ? 600 : 400 }}>{i.l}</span>
+        <div className="fixed bottom-0 left-0 right-0 bg-[#0A0A0C]/80 backdrop-blur-lg border-t border-zinc-800/60 flex justify-around py-2.5 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+          {[
+            { id: 'today', icon: '📋', label: 'Focus' },
+            { id: 'all', icon: '📁', label: 'Index' },
+            { id: 'ai', icon: '🤖', label: 'AI Engine' }
+          ].map(item => (
+            <button key={item.id} onClick={() => { setView(item.id); setSelectedCat(null); setSidebarOpen(false); }} className={`flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-all ${view === item.id ? 'text-purple-400' : 'text-zinc-500'}`}>
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-[9px] font-medium tracking-tight">{item.label}</span>
             </button>
           ))}
         </div>
