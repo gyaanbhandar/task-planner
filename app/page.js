@@ -80,7 +80,7 @@ function DashboardContent() {
     const perm = await notificationService.requestPermission();
     setNotifEnabled(perm === 'granted');
     if (perm === 'granted') {
-      notificationService.send('⚡ Task Planner', 'Notifications enabled! Ab tumne task reminders milenge.');
+      notificationService.send('⚡ Task Planner', 'Notifications enabled!');
       showToast('Notifications ON ✓');
     }
   };
@@ -92,10 +92,6 @@ function DashboardContent() {
       const dueTasks = tasks.filter(tk => tk.status !== 'done' && tk.deadline === today);
       if (dueTasks.length > 0) {
         notificationService.send('⚡ Tasks Due Today!', dueTasks.map(tk => '• ' + tk.title).join('\n'));
-      }
-      const overdue = tasks.filter(tk => tk.status !== 'done' && tk.deadline && tk.deadline < today);
-      if (overdue.length > 0) {
-        notificationService.send('⚠️ Overdue Tasks!', overdue.length + ' tasks overdue hain. Check karo!');
       }
     };
     check();
@@ -129,12 +125,12 @@ function DashboardContent() {
   const getAiPlan = async () => {
     setAiLoading(true);
     const pending = tasks.filter(tk => tk.status !== 'done');
-    const summary = pending.map(tk => `[${tk.category}] ${tk.title} (Pri: ${tk.priority}${tk.deadline ? ', DL: ' + tk.deadline : ''}${tk.subcategory ? ', ' + tk.subcategory : ''})`).join('\n');
+    const summary = pending.map(tk => `[${tk.category}] ${tk.title} (Pri: ${tk.priority})`).join('\n');
     try { 
       const planText = await taskService.fetchAiPlan(summary);
       setAiPlan(planText); 
     } catch (e) { 
-      setAiPlan('AI connect nahi hua.'); 
+      setAiPlan('AI connection failed.'); 
     }
     setAiLoading(false);
   };
@@ -158,18 +154,18 @@ function DashboardContent() {
 
   const completionPercentage = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
 
-  if (authLoading) return <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textSec, fontFamily: 'system-ui' }}>Syncing environment...</div>;
+  if (authLoading) return <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textSec, fontFamily: 'sans-serif' }}>Booting platform...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
-  if (loading) return <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textSec, fontFamily: 'system-ui' }}>Loading framework matrix...</div>;
+  if (loading) return <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textSec, fontFamily: 'sans-serif' }}>Syncing data grids...</div>;
 
   const userName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
   const sidebarProps = { view, setView, setSelectedCat, selectedCat, setSidebarOpen, catCounts, notifEnabled, enableNotifications, userName, handleLogout, setShowAdd };
 
   return (
-    <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', flexDirection: 'row', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: t.text }}>
+    <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', flexDirection: 'row', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif', color: t.text, boxSizing: 'border-box' }}>
       
       {toast && (
-        <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', background: t.surface, border: '1px solid #10B981', color: '#10B981', padding: '10px 24px', borderRadius: 30, fontSize: 12, fontWeight: 600, zIndex: 200, boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+        <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', background: t.surface, border: '1px solid ' + t.border, color: t.text, padding: '8px 20px', borderRadius: 20, fontSize: 12, fontWeight: 500, zIndex: 300, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
           {toast}
         </div>
       )}
@@ -177,158 +173,147 @@ function DashboardContent() {
       {showAdd && <FormPanel form={form} setForm={setForm} editTask={editTask} onSubmit={editTask ? updateTask : addTask} onClose={handleFormClose} isMobile={isMobile} />}
 
       {!isMobile && (
-        <div style={{ width: 250, background: t.sidebar, borderRight: '1px solid ' + t.border, position: 'sticky', top: 0, height: '100vh', flexShrink: 0 }}>
+        <div style={{ width: 240, background: t.sidebar, borderRight: '1px solid ' + t.border, position: 'sticky', top: 0, height: '100vh', flexShrink: 0 }}>
           <Sidebar mobile={false} {...sidebarProps} />
         </div>
       )}
 
       {isMobile && sidebarOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-          <div style={{ width: 270, background: t.sidebar, height: '100%', overflowY: 'auto', borderRight: '1px solid ' + t.border }}><Sidebar mobile={true} {...sidebarProps} /></div>
-          <div style={{ flex: 1, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setSidebarOpen(false)} />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex' }}>
+          <div style={{ width: 260, background: t.sidebar, height: '100%', borderRight: '1px solid ' + t.border }}><Sidebar mobile={true} {...sidebarProps} /></div>
+          <div style={{ flex: 1, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} onClick={() => setSidebarOpen(false)} />
         </div>
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: isMobile ? 'auto' : '100vh', overflowY: 'auto', paddingBottom: isMobile ? 80 : 40 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         
         {isMobile && (
-          <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: t.sidebar, position: 'sticky', top: 0, zIndex: 40, borderBottom: '1px solid ' + t.border }}>
-            <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: t.textSec, fontSize: 20, cursor: 'pointer' }}>☰</button>
-            <h2 style={{ margin: 0, fontSize: 13, color: t.text, fontWeight: 600, letterSpacing: '0.5px' }}>
-              {view === 'today' ? '📋 FOCUS' : view === 'ai' ? '🤖 AI ENGINE' : '📁 DIRECTORY'}
+          <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: t.sidebar, position: 'sticky', top: 0, zIndex: 40, borderBottom: '1px solid ' + t.border, boxSizing: 'border-box' }}>
+            <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: t.textSec, fontSize: 18, cursor: 'pointer' }}>☰</button>
+            <h2 style={{ margin: 0, fontSize: 13, color: t.text, fontWeight: 600, letterSpacing: '0.3px' }}>
+              {view === 'today' ? 'TODAY' : view === 'ai' ? 'AI MAP' : 'INDEX'}
             </h2>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <button onClick={toggleTheme} style={{ background: 'none', border: 'none', fontSize: 15, cursor: 'pointer', color: t.textSec }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
-              <button onClick={() => setShowAdd(true)} style={{ background: '#6C5CE7', border: 'none', color: '#fff', width: 28, height: 28, borderRadius: 8, fontSize: 16, fontWeight: 'bold', cursor: 'pointer' }}>+</button>
+              <button onClick={toggleTheme} style={{ background: 'none', border: 'none', fontSize: 14, color: t.textSec, cursor: 'pointer' }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
+              <button onClick={() => setShowAdd(true)} style={{ background: '#6C5CE7', border: 'none', color: '#fff', width: 26, height: 26, borderRadius: 6, fontSize: 14, fontWeight: 'bold', cursor: 'pointer' }}>+</button>
             </div>
           </div>
         )}
 
-        <div style={{ width: '100%', padding: isMobile ? '20px 16px' : '40px 50px', maxWidth: 900, margin: '0 auto', boxSizing: 'border-box' }}>
+        <div style={{ width: '100%', padding: isMobile ? '24px 16px 80px' : '40px 48px', maxWidth: 840, margin: '0 auto', boxSizing: 'border-box' }}>
           
           {!isMobile && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32, borderBottom: '1px solid ' + t.border, paddingBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28, borderBottom: '1px solid ' + t.border, paddingBottom: 20 }}>
               <div>
-                <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6C5CE7', letterSpacing: 2, textTransform: 'uppercase' }}>Workspace Platform / Active</span>
-                <h2 style={{ margin: '4px 0 0', fontSize: 28, color: t.text, fontWeight: 700, letterSpacing: '-0.5px' }}>
-                  {view === 'today' ? "Today's Focus" : view === 'ai' ? 'AI Strategic Plan' : view === 'all' ? 'All System Tasks' : 'Scope Index'}
+                <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6C5CE7', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600 }}>CORE / DISPATCH</span>
+                <h2 style={{ margin: '4px 0 0', fontSize: 24, color: t.text, fontWeight: 600, letterSpacing: '-0.3px' }}>
+                  {view === 'today' ? "Today's Timeline" : view === 'ai' ? 'AI Roadmap Generator' : view === 'all' ? 'System Ledger' : 'Category View'}
                 </h2>
-                <p style={{ margin: '6px 0 0', fontSize: 13, color: t.textSec }}>{stats.pending} initiatives remaining &bull; {stats.done} synchronizations built</p>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: t.textSec }}>{stats.pending} remaining targets &bull; {stats.done} values completed</p>
               </div>
-              <button onClick={() => setShowAdd(true)} style={{ background: theme === 'dark' ? '#FFFFFF' : '#09090B', border: 'none', color: theme === 'dark' ? '#09090B' : '#FFFFFF', padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>+ New Task</button>
+              <button onClick={() => setShowAdd(true)} style={{ background: t.text, border: 'none', color: t.bg, padding: '8px 16px', borderRadius: '6px', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: '0.2s' }}>+ Create Directive</button>
             </div>
           )}
 
           {view === 'today' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20, width: '100%' }}>
                 {[
-                  { l: 'Total Matrix', v: stats.total, c: t.text },
-                  { l: 'Completed', v: stats.done, c: '#10B981' },
-                  { l: 'Open Backlog', v: stats.pending, c: '#F59E0B' },
-                  { l: 'Urgent Targets', v: stats.highPri, c: '#EF4444' }
+                  { l: 'Ledger', v: stats.total },
+                  { l: 'Synced', v: stats.done },
+                  { l: 'Backlog', v: stats.pending },
+                  { l: 'Critical', v: stats.highPri }
                 ].map((s, idx) => (
-                  <div key={idx} style={{ background: t.surface, borderRadius: 12, padding: '16px', border: '1px solid ' + t.border, display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: 10, color: t.textSec, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}>{s.l}</span>
-                    <span style={{ fontSize: 24, fontWeight: 700, color: s.c, marginTop: 8 }}>{s.v}</span>
+                  <div key={idx} style={{ background: t.surface, borderRadius: 8, padding: '12px 14px', border: '1px solid ' + t.border }}>
+                    <span style={{ fontSize: 10, color: t.textSec, textTransform: 'uppercase', fontFamily: 'monospace' }}>{s.l}</span>
+                    <span style={{ fontSize: 20, fontWeight: 600, color: t.text, display: 'block', marginTop: 4 }}>{s.v}</span>
                   </div>
                 ))}
               </div>
 
-              <div style={{ background: t.surface, border: '1px solid ' + t.border, padding: 16, borderRadius: 12, marginBottom: 20 }}>
+              <div style={{ background: t.surface, border: '1px solid ' + t.border, padding: '14px', borderRadius: 8, marginBottom: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                  <span style={{ color: t.textSec, fontWeight: 500 }}>Operational Progress Mapping</span>
+                  <span style={{ color: t.textSec, fontWeight: 500 }}>System Integrity Mapping</span>
                   <span style={{ color: t.text, fontWeight: 600 }}>{completionPercentage}%</span>
                 </div>
-                <div style={{ height: 6, background: theme === 'dark' ? '#27272A' : '#E4E4E7', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ width: `${completionPercentage}%`, height: '100%', background: 'linear-gradient(90deg, #6C5CE7, #A29BFE)', borderRadius: 3, transition: 'width 0.4s ease' }} />
+                <div style={{ height: 4, background: theme === 'dark' ? '#1C1C1F' : '#E4E4E7', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ width: `${completionPercentage}%`, height: '100%', background: '#6C5CE7', transition: 'width 0.3s ease' }} />
                 </div>
               </div>
 
-              <button onClick={() => setView('ai')} style={{ display: 'block', width: '100%', padding: '16px', marginBottom: 24, background: theme === 'dark' ? 'rgba(108,92,231,0.06)' : 'rgba(108,92,231,0.04)', border: '1px solid rgba(108,92,231,0.2)', borderRadius: 12, color: '#6C5CE7', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', outline: 'none' }}>
-                🤖 Ask AI to layout today's execution timeline parameters &rarr;
-              </button>
-
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)', gap: 10, marginBottom: 28 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: 8, marginBottom: 24 }}>
                 {CATEGORIES.map(c => (
-                  <button key={c.id} onClick={() => { setView('category'); setSelectedCat(c.id); }} style={{ background: t.surface, border: '1px solid ' + t.border, borderRadius: 12, padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, textAlign: 'left' }}>
-                    <span style={{ fontSize: 18 }}>{c.icon}</span>
-                    <span style={{ fontSize: 12, color: t.text, fontWeight: 500 }}>{c.name}</span>
-                    <span style={{ fontSize: 10, color: c.color }}>{catCounts[c.id]} pending</span>
+                  <button key={c.id} onClick={() => { setView('category'); setSelectedCat(c.id); }} style={{ background: t.surface, border: '1px solid ' + t.border, borderRadius: 8, padding: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }}>
+                    <span style={{ fontSize: 16 }}>{c.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: t.text, fontWeight: 500, truncate: 'true' }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: t.textSec }}>{catCounts[c.id] || 0} left</div>
+                    </div>
                   </button>
                 ))}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ fontSize: 11, fontFamily: 'monospace', color: t.textSec, margin: 0, letterSpacing: '1px' }}>CORE PROTOCOLS SCHEDULE</h3>
-                <div style={{ flex: 1, height: 1, background: t.border, marginLeft: 16 }} />
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+                <h3 style={{ fontSize: 10, fontFamily: 'monospace', color: t.textSec, margin: 0, letterSpacing: '0.5px' }}>STREAM OBJECTIVES</h3>
+                <div style={{ flex: 1, height: 1, background: t.border, marginLeft: 12 }} />
               </div>
 
-              {getTodayTasks().length === 0 && <Empty text="Clean slate. No structural directives assigned here." />}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {getTodayTasks().length === 0 && <Empty text="No active instructions staged." />}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {getTodayTasks().map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
               </div>
             </>
           )}
 
           {view === 'ai' && (
-            <div style={{ maxWidth: 650, margin: '0 auto' }}>
+            <div style={{ maxWidth: 600, margin: '0 auto' }}>
               {!aiPlan && !aiLoading && (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: t.surface, border: '1px solid ' + t.border, borderRadius: 16 }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>🧠</div>
-                  <h4 style={{ color: t.text, fontSize: 16, margin: '0 0 6px' }}>Heuristic Machine Blueprint</h4>
-                  <p style={{ color: t.textSec, margin: '0 0 20px', fontSize: 13, lineHeight: 1.6 }}>System will compute operational arrays to produce a structured backlog strategy maps.</p>
-                  <button onClick={getAiPlan} style={{ background: '#6C5CE7', border: 'none', color: '#fff', padding: '12px 28px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Trigger AI Heuristics</button>
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: t.surface, border: '1px solid ' + t.border, borderRadius: 12 }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>🤖</div>
+                  <h4 style={{ color: t.text, fontSize: 15, margin: '0 0 4px', fontWeight: 600 }}>Heuristic Pipeline Optimization</h4>
+                  <p style={{ color: t.textSec, margin: '0 0 16px', fontSize: 13, lineHeight: 1.5 }}>Processes thread matrix metrics to align outstanding backlog tokens.</p>
+                  <button onClick={getAiPlan} style={{ background: '#6C5CE7', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Generate Stack Map</button>
                 </div>
               )}
-              {aiLoading && <div style={{ textAlign: 'center', padding: 40, color: t.textSec, fontSize: 13 }}>🤖 Computing token clusters...</div>}
+              {aiLoading && <div style={{ textAlign: 'center', padding: 32, color: t.textSec, fontSize: 12, fontFamily: 'monospace' }}>ANALYZING INSTRUCTIONS MATRIX...</div>}
               {aiPlan && (
-                <div style={{ background: t.surface, borderRadius: 16, padding: 24, border: '1px solid ' + t.border }}>
-                  <div style={{ color: '#6C5CE7', fontSize: 11, fontFamily: 'monospace', marginBottom: 12, fontWeight: 700, letterSpacing: 1 }}>COMPILED TARGET RECOMMENDATION</div>
-                  <div style={{ color: t.text, lineHeight: 1.7, whiteSpace: 'pre-wrap', fontSize: 13, background: t.inputBg, padding: 16, borderRadius: 8, border: '1px solid ' + t.border, fontFamily: 'monospace' }}>{aiPlan}</div>
-                  <button onClick={getAiPlan} style={{ marginTop: 16, padding: '8px 16px', borderRadius: 8, border: '1px solid ' + t.border, background: 'transparent', color: t.textSec, fontSize: 12, cursor: 'pointer' }}>🔄 Recalibrate Cluster</button>
+                <div style={{ background: t.surface, borderRadius: 12, padding: 20, border: '1px solid ' + t.border }}>
+                  <div style={{ color: t.text, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontSize: 13, background: t.inputBg, padding: 14, borderRadius: 6, border: '1px solid ' + t.border, fontFamily: 'monospace' }}>{aiPlan}</div>
+                  <button onClick={getAiPlan} style={{ marginTop: 14, padding: '6px 12px', borderRadius: 6, border: '1px solid ' + t.border, background: 'transparent', color: t.textSec, fontSize: 11, cursor: 'pointer' }}>🔄 Re-index Ledger</button>
                 </div>
               )}
             </div>
           )}
 
           {view === 'category' && selectedCat && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', gap: 8, background: t.surface, padding: 6, borderRadius: 12, width: 'fit-content', border: '1px solid ' + t.border }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', gap: 6, background: t.surface, padding: 4, borderRadius: 8, width: 'fit-content', border: '1px solid ' + t.border }}>
                 {['all', 'pending', 'done'].map(f => (
-                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 16px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: 'none', background: filter === f ? (theme === 'dark' ? '#27272A' : '#E4E4E7') : 'transparent', color: filter === f ? t.text : t.textSec, fontWeight: 500 }}>{f.toUpperCase()}</button>
+                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, cursor: 'pointer', border: 'none', background: filter === f ? (theme === 'dark' ? '#222227' : '#E4E4E7') : 'transparent', color: filter === f ? t.text : t.textSec, fontWeight: 500 }}>{f.toUpperCase()}</button>
                 ))}
               </div>
-              {(selectedCat === 'clients' || selectedCat === 'websites') && (
-                <input 
-                  style={{ background: t.inputBg, border: '1px solid ' + t.border, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: t.text, outline: 'none' }} 
-                  placeholder={'Filter active nodes...'} 
-                  value={subFilter} 
-                  onChange={e => setSubFilter(e.target.value)} 
-                />
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {getFiltered().length === 0 && <Empty text="No active parameters found inside this structural boundary." />}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {getFiltered().length === 0 && <Empty text="No nodes found inside this classification scope." />}
                 {getFiltered().map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
               </div>
             </div>
           )}
 
           {view === 'all' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', gap: 8, background: t.surface, padding: 6, borderRadius: 12, width: 'fit-content', border: '1px solid ' + t.border }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', gap: 6, background: t.surface, padding: 4, borderRadius: 8, width: 'fit-content', border: '1px solid ' + t.border }}>
                 {['all', 'pending', 'done'].map(f => (
-                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 16px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: 'none', background: filter === f ? (theme === 'dark' ? '#27272A' : '#E4E4E7') : 'transparent', color: filter === f ? t.text : t.textSec, fontWeight: 500 }}>{f.toUpperCase()}</button>
+                  <button key={f} onClick={() => setFilter(f)} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, cursor: 'pointer', border: 'none', background: filter === f ? (theme === 'dark' ? '#222227' : '#E4E4E7') : 'transparent', color: filter === f ? t.text : t.textSec, fontWeight: 500 }}>{f.toUpperCase()}</button>
                 ))}
               </div>
               {CATEGORIES.map(cat => { 
                 const ct = getFiltered().filter(tk => tk.category === cat.id); 
                 if (!ct.length) return null; 
                 return (
-                  <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <h3 style={{ fontSize: 12, color: cat.color, margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span>{cat.icon}</span><span>{cat.name}</span>
-                      <span style={{ fontSize: 10, background: t.inputBg, color: t.textSec, padding: '2px 6px', borderRadius: 6, border: '1px solid ' + t.border }}>{ct.length}</span>
+                  <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <h3 style={{ fontSize: 11, color: t.textSec, margin: 0, fontWeight: 600, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>{cat.icon}</span><span>{cat.name.toUpperCase()}</span>
+                      <span style={{ fontSize: 10, background: t.inputBg, color: t.textSec, padding: '1px 5px', borderRadius: 4, border: '1px solid ' + t.border }}>{ct.length}</span>
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {ct.map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
@@ -336,11 +321,26 @@ function DashboardContent() {
                   </div>
                 ); 
               })}
-              {getFiltered().length === 0 && <Empty text="Global index registries are currently empty." />}
+              {getFiltered().length === 0 && <Empty text="System logs are blank." />}
             </div>
           )}
         </div>
       </div>
+
+      {isMobile && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: t.sidebar, borderTop: '1px solid ' + t.border, display: 'flex', justifyContent: 'space-around', padding: '8px 0', zIndex: 100, boxSizing: 'border-box' }}>
+          {[
+            { id: 'today', icon: '📋', label: 'Today' },
+            { id: 'all', icon: '📁', label: 'Index' },
+            { id: 'ai', icon: '🤖', label: 'AI Engine' }
+          ].map(item => (
+            <button key={item.id} onClick={() => { setView(item.id); setSelectedCat(null); setSidebarOpen(false); }} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer', color: view === item.id ? '#6C5CE7' : t.textSec }}>
+              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: 500 }}>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
