@@ -315,7 +315,7 @@ function DashboardContent() {
                   <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <h3 style={{ fontSize: 13, color: cat.color, margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{cat.icon}</span><span>{cat.name}</span>
-                      <span style={{ fontSize: 11, background: t.inputBg, color: t.textSec, padding: '2px 8px', borderRadius: 6, border: '1px solid ' + t.border }}>{ct.length}</span>
+                      <span style={{ fontSize: 11, background: t.border, color: t.text, fontWeight: '600', padding: '2px 8px', borderRadius: 6, border: '1px solid ' + t.borderAlt }}>{ct.length}</span>
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {ct.map(tk => <TaskCard key={tk.id} task={tk} onToggle={handleToggleStatus} onEdit={startEdit} onDelete={handleDeleteTask} isMobile={isMobile} />)}
