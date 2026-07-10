@@ -9,41 +9,129 @@ export default function Sidebar({ mobile, view, setView, setSelectedCat, selecte
   const S = getS(t);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ padding: '20px 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div className="flex flex-col h-full bg-[#09090B]/40 backdrop-blur-xl border-r border-zinc-900/60 font-sans select-none text-zinc-300">
+      
+      {/* Header Profile Section / Arc Browser Inspired Title */}
+      <div className="p-5 flex justify-between items-start border-b border-zinc-900/40">
         <div>
-          <h1 style={{ margin: 0, fontSize: 17, color: t.text, fontWeight: 700 }}>⚡ Task Planner</h1>
-          <p style={{ margin: '2px 0 0', fontSize: 11, color: t.textSec }}>{formatIndianDate()}</p>
+          <h1 className="text-sm font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 to-zinc-400 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+            Task Planner
+          </h1>
+          <p className="text-[10px] font-mono text-zinc-500 mt-1 uppercase tracking-wider">{formatIndianDate()}</p>
         </div>
-        <button onClick={toggleTheme} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: '2px 4px' }} title="Toggle theme">{theme === 'dark' ? '☀️' : '🌙'}</button>
+        <button 
+          onClick={toggleTheme} 
+          className="text-zinc-500 hover:text-zinc-200 transition-colors text-sm p-1 rounded-md hover:bg-zinc-900/50" 
+          title="Toggle System Environment Theme"
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </div>
-      <div style={{ padding: '4px 8px', flex: 1 }}>
-        {[{ id: 'today', icon: '📋', label: "Today's Focus" }, { id: 'all', icon: '📁', label: 'All Tasks' }, { id: 'ai', icon: '🤖', label: 'AI Plan' }].map(item => (
-          <button key={item.id} onClick={() => { setView(item.id); setSelectedCat(null); if (mobile) setSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, marginBottom: 2, background: view === item.id && !selectedCat ? '#6C5CE718' : 'transparent', color: view === item.id && !selectedCat ? '#a29bfe' : t.textSec }}><span style={{ fontSize: 16 }}>{item.icon}</span>{item.label}</button>
-        ))}
-        <div style={{ height: 1, background: t.border, margin: '10px 4px' }} />
-        <div style={{ padding: '4px 12px', fontSize: 10, color: t.textDim, fontWeight: 700, letterSpacing: 1 }}>CATEGORIES</div>
-        {CATEGORIES.map(c => (
-          <button key={c.id} onClick={() => { setView('category'); setSelectedCat(c.id); if (mobile) setSidebarOpen(false); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, marginBottom: 1, background: selectedCat === c.id ? c.color + '14' : 'transparent', color: selectedCat === c.id ? c.color : t.textSec }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 15 }}>{c.icon}</span>{c.name}</span>
-            {catCounts[c.id] > 0 && <span style={{ fontSize: 11, background: c.color + '22', color: c.color, padding: '1px 7px', borderRadius: 10, fontWeight: 600 }}>{catCounts[c.id]}</span>}
-          </button>
-        ))}
+
+      {/* Main Core Thread Sequences navigation stack */}
+      <div className="p-3 flex-1 space-y-1 overflow-y-auto">
+        <div className="text-[9px] font-mono tracking-widest text-zinc-600 uppercase px-2.5 mb-2 block">Scopes</div>
+        
+        {[
+          { id: 'today', icon: '📋', label: "Today's Focus" }, 
+          { id: 'all', icon: '📁', label: 'All Indices' }, 
+          { id: 'ai', icon: '🤖', label: 'AI Optimization' }
+        ].map(item => {
+          const isActive = view === item.id && !selectedCat;
+          return (
+            <button 
+              key={item.id} 
+              onClick={() => { setView(item.id); setSelectedCat(null); if (mobile) setSidebarOpen(false); }} 
+              className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium tracking-wide transition-all duration-200 ${
+                isActive 
+                  ? 'bg-zinc-900 text-purple-400 border border-zinc-800 shadow-[0_1px_10px_rgba(0,0,0,0.4)]' 
+                  : 'hover:bg-zinc-900/40 hover:text-zinc-100 border border-transparent'
+              }`}
+            >
+              <span className={`text-sm transition-transform duration-200 ${isActive ? 'scale-110 opacity-100' : 'opacity-60'}`}>{item.icon}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+            </button>
+          );
+        })}
+
+        {/* Categories Division Grid (Linear Matrix View) */}
+        <div className="h-px bg-zinc-900/60 my-4 mx-2" />
+        <div className="text-[9px] font-mono tracking-widest text-zinc-600 uppercase px-2.5 mb-2 block">Categories</div>
+        
+        <div className="space-y-0.5">
+          {CATEGORIES.map(c => {
+            const isCatActive = selectedCat === c.id;
+            return (
+              <button 
+                key={c.id} 
+                onClick={() => { setView('category'); setSelectedCat(c.id); if (mobile) setSidebarOpen(false); }} 
+                className={`flex items-center justify-between w-full px-3 py-1.5 rounded-xl text-xs font-medium tracking-wide transition-all duration-200 ${
+                  isCatActive 
+                    ? 'bg-purple-950/20 text-purple-300 border border-purple-500/20 shadow-[0_2px_12px_rgba(108,92,231,0.05)]' 
+                    : 'hover:bg-zinc-900/30 hover:text-zinc-200 border border-transparent'
+                }`}
+              >
+                <span className="flex items-center gap-2.5 truncate">
+                  <span className={`text-xs transition-opacity ${isCatActive ? 'opacity-100' : 'opacity-60'}`}>{c.icon}</span>
+                  <span className="truncate">{c.name}</span>
+                </span>
+                {catCounts[c.id] > 0 && (
+                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border transition-all ${
+                    isCatActive 
+                      ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' 
+                      : 'bg-zinc-950/60 border-zinc-900 text-zinc-500'
+                  }`}>
+                    {catCounts[c.id]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Premium Warning system notification link trigger widget */}
         {!notifEnabled && (
           <>
-            <div style={{ height: 1, background: t.border, margin: '10px 4px' }} />
-            <button onClick={enableNotifications} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#ffa502' }}>🔔 Enable Notifications</button>
+            <div className="h-px bg-zinc-900/60 my-4 mx-2" />
+            <button 
+              onClick={enableNotifications} 
+              className="group flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-xs font-medium text-amber-500 hover:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 hover:border-amber-500/20 transition-all duration-200 shadow-sm"
+            >
+              <span className="text-xs group-hover:animate-bounce">🔔</span>
+              <span className="text-left tracking-wide">Sync Notifications</span>
+            </button>
           </>
         )}
       </div>
-      <div style={{ padding: '8px 12px 16px', borderTop: '1px solid ' + t.border }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '0 4px' }}>
-          <div style={{ width: 28, height: 28, borderRadius: 14, background: '#6C5CE722', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#a29bfe', fontWeight: 700 }}>{userName[0].toUpperCase()}</div>
-          <span style={{ fontSize: 12, color: t.textSec, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</span>
-          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ff6b6b', fontSize: 11, cursor: 'pointer', padding: '4px 8px' }}>Logout</button>
+
+      {/* Account Deployment Identity Card (Stripe / Stripe Layout Footer Style) */}
+      <div className="p-4 border-t border-zinc-900/60 bg-zinc-950/30 space-y-3">
+        <div className="flex items-center gap-3 px-1">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600/20 to-indigo-600/20 border border-purple-500/30 flex items-center justify-center text-[11px] text-purple-300 font-mono font-bold tracking-tight shadow-inner">
+            {userName[0].toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-zinc-200 truncate tracking-tight">{userName}</div>
+            <div className="text-[9px] font-mono text-zinc-600 truncate uppercase">Developer Session</div>
+          </div>
+          <button 
+            onClick={handleLogout} 
+            className="text-[10px] font-medium text-rose-500/70 hover:text-rose-400 hover:bg-rose-500/10 px-2 py-1 rounded-md transition-all border border-transparent hover:border-rose-500/10"
+          >
+            Exit
+          </button>
         </div>
-        <button onClick={() => { setShowAdd(true); if (mobile) setSidebarOpen(false); }} style={{ ...S.primaryBtn, fontSize: 13, padding: '10px 0' }}>+ New Task</button>
+
+        <button 
+          onClick={() => { setShowAdd(true); if (mobile) setSidebarOpen(false); }} 
+          className="w-full relative group overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-medium py-2.5 rounded-xl shadow-lg shadow-purple-900/20 transition-all duration-300 hover:opacity-95"
+        >
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          Create Directive
+        </button>
       </div>
+
     </div>
   );
 }
