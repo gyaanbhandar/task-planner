@@ -1,5 +1,5 @@
-// app/page.js
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import { VISUAL_THEME, CATEGORIES, CLIENTS, RECURRING_PRESETS, PRIORITY_CONFIG } from '../constants/taskConstants';
 import { todayStr, formatIndianDate } from '../utils/dateUtils';
@@ -13,12 +13,10 @@ export default function ModernTaskPlannerOS() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // Advanced Matrix State View Engine
-  const [currentView, setCurrentView] = useState('today'); // Options: today, upcoming, calendar, all_tasks, ai_planner, recurring, client_workspace, categories_matrix, notifications
+  const [currentView, setCurrentView] = useState('today'); 
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeClient, setActiveClient] = useState(null);
   
-  // Overlays & Focus Inspector Sheet states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inspectedTask, setInspectedTask] = useState(null);
   const [subtasks, setSubtasks] = useState([
@@ -28,7 +26,6 @@ export default function ModernTaskPlannerOS() {
     { id: 4, title: 'Prepare report & recommendations', completed: false, date: '18 Jul' }
   ]);
 
-  // Mock Active Mock Database System Context
   const [tasks, setTasks] = useState([
     { id: 't1', title: 'ek SEO ki resource hire karni hai', category: 'personal', subcategory: 'Personal', priority: 'high', deadline: '2026-07-19', status: 'pending', time: '09:00 AM' },
     { id: 't2', title: 'Data compilation', category: 'professional', subcategory: 'Lead Gen', priority: 'high', deadline: '2026-07-19', status: 'pending', time: '11:00 AM' },
@@ -65,15 +62,12 @@ export default function ModernTaskPlannerOS() {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', background: VISUAL_THEME.bg, overflow: 'hidden' }}>
       
-      {/* Structural Core Layout Left Control Bar Component */}
       <div style={{ width: '260px', height: '100%', flexShrink: 0 }}>
         <Sidebar currentView={currentView} onViewChange={triggerViewTransition} activeCategory={activeCategory} activeClient={activeClient} taskCounts={{}} userName={session.user.email} onLogout={() => authService.signOut().then(() => setSession(null))} />
       </div>
 
-      {/* Main Structural Right Core Canvas Dynamic Panel Viewport */}
       <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
         
-        {/* Dynamic Canvas Universal Header Node component */}
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ position: 'relative' }}>
@@ -90,12 +84,8 @@ export default function ModernTaskPlannerOS() {
           </div>
         </div>
 
-        {/* Dynamic Canvas Container Target Context Framework */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '40px' }}>
           
-          {/* ========================================================= */}
-          {/* SCREEN 1: DASHBOARD VIEW CORE GRAPHIC ELEMENT FLOW MODULE */}
-          {/* ========================================================= */}
           {currentView === 'today' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <div>
@@ -103,7 +93,6 @@ export default function ModernTaskPlannerOS() {
                 <p style={{ fontSize: '14px', color: VISUAL_THEME.textSec }}>{formatIndianDate()}</p>
               </div>
 
-              {/* Statistical Analytics KPI Metric Board Widgets Elements Row Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
                 {[
                   { label: 'Today', count: 6, icon: '📅', bg: '#EEF2FF', color: '#4F46E5' },
@@ -122,9 +111,8 @@ export default function ModernTaskPlannerOS() {
                 ))}
               </div>
 
-              {/* Section Subtitle Task Registry Area Block Array */}
               <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justify: 'space-between', marginBottom: '20px' }}>
                   <h3 style={{ fontSize: '16px', fontWeight: 600, color: VISUAL_THEME.text }}>Today's Tasks</h3>
                   <span style={{ color: VISUAL_THEME.accent, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }} onClick={() => setCurrentView('calendar')}>View Calendar</span>
                 </div>
@@ -135,7 +123,6 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
-              {/* Ambient Tip Banner Context Layer Component Info Block */}
               <div style={{ padding: '16px 20px', background: '#EEF2FF', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '13px', color: '#4F46E5', fontWeight: 500 }}>💡 Tip: Stay consistent! You've completed 3 tasks this month.</span>
                 <span style={{ fontSize: '13px', color: '#4F46E5', fontWeight: 600, cursor: 'pointer' }}>Keep going! 💪</span>
@@ -143,9 +130,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 2: CHRONOLOGICAL PLANNER MODULE (UPCOMING TASKS)   */}
-          {/* ========================================================= */}
           {currentView === 'upcoming' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <div>
@@ -153,7 +137,6 @@ export default function ModernTaskPlannerOS() {
                 <p style={{ fontSize: '14px', color: VISUAL_THEME.textSec }}>All your tasks coming up</p>
               </div>
 
-              {/* Section Interval Segmentation Nodes Matrix Array */}
               {['Tomorrow, 17 July 2026', 'This Week (18 – 24 July 2026)', 'Next Week (25 – 31 July 2026)'].map((segment, sIdx) => (
                 <div key={sIdx} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -170,9 +153,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 3: UNIFIED GRID SYSTEM CALENDAR LAYER INTERFACE    */}
-          {/* ========================================================= */}
           {currentView === 'calendar' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '32px' }}>
               <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px' }}>
@@ -184,7 +164,6 @@ export default function ModernTaskPlannerOS() {
                     ))}
                   </div>
                 </div>
-                {/* Visual Representation Layout Block Matrix Elements Grid Array */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: VISUAL_THEME.border }}>
                   {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
                     <div key={d} style={{ background: '#F8FAFC', padding: '10px', textTransform: 'uppercase', fontSize: '11px', fontWeight: 600, color: VISUAL_THEME.textSec, textAlign: 'center' }}>{d}</div>
@@ -199,7 +178,6 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
               
-              {/* Dynamic Faceted Sidebar Integration Filters Container Block */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '20px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Mini Calendar</h4>
@@ -222,9 +200,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 4: MASTER REPOSITORY TABLE (ALL TASKS)             */}
-          {/* ========================================================= */}
           {currentView === 'all_tasks' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
@@ -232,7 +207,6 @@ export default function ModernTaskPlannerOS() {
                 <p style={{ fontSize: '14px', color: VISUAL_THEME.textSec }}>Manage and track all your tasks in one place.</p>
               </div>
 
-              {/* Advanced Controls Filtration Layer Console Tool Strip */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr) auto', gap: '12px', background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}` }}>
                 {['Status', 'Category', 'Client', 'Priority', 'Task Type', 'Due Date'].map((label, idx) => (
                   <select key={idx} style={{ padding: '8px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FAFAFA', fontSize: '13px' }}>
@@ -242,7 +216,6 @@ export default function ModernTaskPlannerOS() {
                 <button style={{ padding: '8px 16px', background: '#F1F5F9', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>Clear</button>
               </div>
 
-              {/* Relational Table Architecture Mapping Segment */}
               <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                   <thead>
@@ -276,12 +249,8 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 6: SYSTEM CATEGORY WORKSPACE / CLIENT PANELS FRAME */}
-          {/* ========================================================= */}
           {currentView === 'client_workspace' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              {/* Dynamic Header Frame parameters based on Selection context map */}
               <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                   <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(16,185,129,0.1)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>AB</div>
@@ -296,14 +265,12 @@ export default function ModernTaskPlannerOS() {
                 <button style={{ padding: '10px 20px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>Edit Details</button>
               </div>
 
-              {/* Internal Tab Workspace Segment View Options Toggle List */}
               <div style={{ display: 'flex', gap: '24px', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '12px' }}>
                 {['Overview', 'Tasks', 'Calendar', 'Files', 'Notes', 'Activity'].map((tab, idx) => (
                   <span key={idx} style={{ fontSize: '14px', fontWeight: idx === 0 ? 600 : 500, color: idx === 0 ? VISUAL_THEME.accent : VISUAL_THEME.textSec, cursor: 'pointer', borderBottom: idx === 0 ? `2px solid ${VISUAL_THEME.accent}` : 'none', paddingBottom: '12px', marginBottom: '-14px' }}>{tab}</span>
                 ))}
               </div>
 
-              {/* Nested Board Grid Layout Mapping Framework */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '32px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '8px' }}>Active Workspace Boards</h3>
@@ -324,9 +291,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 8: THE INTELLIGENT MODULE ENGINE (AI PLANNER VIEW) */}
-          {/* ========================================================= */}
           {currentView === 'ai_planner' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <div>
@@ -334,7 +298,6 @@ export default function ModernTaskPlannerOS() {
                 <p style={{ fontSize: '14px', color: VISUAL_THEME.textSec }}>Your AI-powered planning assistant system context</p>
               </div>
 
-              {/* Metrics Cockpit Panels Section Framework Indicators */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                 {[
                   { label: 'Estimated Focus Time', value: '6h 20m', note: '+ 20m vs yesterday' },
@@ -350,7 +313,6 @@ export default function ModernTaskPlannerOS() {
                 ))}
               </div>
 
-              {/* Central Scheduling Call-To-Action Primary Automation Control */}
               <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px', textAlign: 'center' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ready to optimize your operational schedule?</h3>
                 <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, marginBottom: '20px' }}>Let Claude evaluate your cross-filtration nodes to eliminate negative friction loops.</p>
@@ -359,9 +321,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 9: TASK AUTOMATION DASHBOARD (RECURRING FLOW MODULE)*/}
-          {/* ========================================================= */}
           {currentView === 'recurring' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -372,14 +331,12 @@ export default function ModernTaskPlannerOS() {
                 <button style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Recurring Task</button>
               </div>
 
-              {/* Horizontal Filter Navigation Strip Layout */}
               <div style={{ display: 'flex', gap: '8px', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '12px' }}>
                 {['All', 'Daily', 'Weekly', 'Monthly', 'Custom'].map((tab, idx) => (
                   <button key={idx} style={{ padding: '6px 12px', borderRadius: '20px', border: 'none', background: idx === 0 ? 'rgba(99,102,241,0.1)' : 'transparent', color: idx === 0 ? VISUAL_THEME.accent : VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{tab}</button>
                 ))}
               </div>
 
-              {/* Automated Interface Engines Data Grid List Table */}
               <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                   <thead>
@@ -411,9 +368,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 10: CRM HUB (CLIENTS MANAGEMENT MATRIX VIEWPORT)   */}
-          {/* ========================================================= */}
           {currentView === 'clients_hub' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -424,7 +378,6 @@ export default function ModernTaskPlannerOS() {
                 <button style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ Add Client Portfolio</button>
               </div>
 
-              {/* Profiles Array Blocks Layout Container */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                 {CLIENTS.map(client => (
                   <div key={client.id} style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px', position: 'relative', cursor: 'pointer' }} onClick={() => triggerViewTransition('client_workspace', null, client.id)}>
@@ -445,9 +398,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 11: TAXONOMY SYSTEM (CATEGORIES ARCHITECTURE FRAME)*/}
-          {/* ========================================================= */}
           {currentView === 'categories_matrix' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -487,9 +437,6 @@ export default function ModernTaskPlannerOS() {
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* SCREEN 12: NOTIFICATION CONSOLE (ALERTS CONTROL SYSTEM)   */}
-          {/* ========================================================= */}
           {currentView === 'notifications' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '16px' }}>
@@ -519,9 +466,6 @@ export default function ModernTaskPlannerOS() {
 
         </div>
 
-        {/* ========================================================= */}
-        {/* SCREEN 7: INSPECTION SIDEBAR SLIDE-OUT SHEET PANEL        */}
-        {/* ========================================================= */}
         {inspectedTask && (
           <div style={{ position: 'absolute', top: 0, right: 0, width: '420px', height: '100%', background: '#FFFFFF', borderLeft: `1px solid ${VISUAL_THEME.border}`, boxShadow: '-4px 0 30px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', zIndex: 100 }}>
             <div style={{ padding: '24px', borderBottom: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -535,12 +479,11 @@ export default function ModernTaskPlannerOS() {
                 <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, lineHeight: 1.6 }}>Complete premium optimization rules tracking analytics data points inline inside active canvas frames.</p>
               </div>
 
-              {/* Native Checklist Progress Component Meter Container */}
               <div>
                 <h4 style={{ fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.textSec, textTransform: 'uppercase', marginBottom: '12px' }}>Subtasks Timeline Checklist</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {subtasks.map(st => (
-                    <div key={st.id} style={{ display: 'flex', alignItems: 'center', justify: 'space-between', fontSize: '13px' }}>
+                    <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <input type="checkbox" checked={st.completed} readOnly style={{ accentColor: VISUAL_THEME.accent }} />
                         <span style={{ textDecoration: st.completed ? 'line-through' : 'none', color: st.completed ? VISUAL_THEME.textSec : VISUAL_THEME.text }}>{st.title}</span>
@@ -551,7 +494,6 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
-              {/* System Embedded Stopwatch Widget Time Tracker Component Panel */}
               <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}` }}>
                 <span style={{ fontSize: '11px', fontWeight: 600, color: VISUAL_THEME.textSec, display: 'block', marginBottom: '6px' }}>TRACKED TIME ACTIVE LABELS</span>
                 <div style={{ display: 'flex', alignItems: 'center', justify: 'space-between' }}>
@@ -569,9 +511,6 @@ export default function ModernTaskPlannerOS() {
 
       </div>
 
-      {/* ========================================================= */}
-      {/* SCREEN 5: CREATE CONTEXTUAL ACTION MODAL OVERLAY STATE    */}
-      {/* ========================================================= */}
       {showCreateModal && (
         <FormPanel form={{ title: '', description: '', category: 'personal', subcategory: '', priority: 'medium', deadline: todayStr(), type: 'daily' }} setForm={() => {}} editTask={null} onSubmit={() => setShowCreateModal(false)} onClose={() => setShowCreateModal(false)} isMobile={false} />
       )}
