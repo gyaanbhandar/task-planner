@@ -103,7 +103,7 @@ export default function Sidebar({ currentView, onViewChange, activeCategory, act
           <h4 style={{ fontSize: '13px', fontWeight: 600, color: VISUAL_THEME.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName || 'Anukant'}</h4>
           <p style={{ fontSize: '11px', color: '#10B981', margin: 0 }}>Free Plan</p>
         </div>
-        <button onClick={onLogout} style={{ border: 'none', background: 'transparent', fontSize: '16px', cursor: 'pointer' }} title="Logout">🚪</button>
+        <button onClick={onLogout} style={{ border: 'none', background: 'transparent', fontSize: '16px', cursor: 'pointer' }} title="Logout">⏻</button>
       </div>
 
     </div>
