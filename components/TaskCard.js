@@ -1,63 +1,55 @@
-// task-planner-main/components/TaskCard.js
-import React, { useState } from 'react';
+// components/TaskCard.js
+'use client';
+import React from 'react';
+import { CATEGORIES, PRIORITY_CONFIG, VISUAL_THEME } from '../constants/taskConstants';
 
-export default function TaskCard({ task, onToggleSubTask, onToggleStatus }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export default function TaskCard({ task, onToggle, onSelectDetail, onDelete }) {
+  const matchedCat = CATEGORIES.find(c => c.id === task.category);
+  const priorityInfo = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+  const isDone = task.status === 'done';
 
   return (
-    <div className={`p-4 rounded-xl border mb-3 bg-white transition shadow-sm ${task.isSkipped ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          <input 
-            type="checkbox" 
-            checked={task.status === 'Completed'}
-            onChange={() => onToggleStatus(task.id)}
-            className="mt-1 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-          />
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className={`font-medium text-slate-900 ${task.status === 'Completed' ? 'line-through text-slate-400' : ''}`}>
-                {task.title}
-              </h3>
-              {task.subTasks?.length > 0 && (
-                <button 
-                  onClick={() => setIsExpanded(!isExpanded)} 
-                  className="text-xs text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded hover:bg-indigo-100"
-                >
-                  {isExpanded ? 'Hide' : `Show Sub-tasks (${task.subTasks.length})`}
-                </button>
-              )}
-            </div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: VISUAL_THEME.surface, border: `1px solid ${VISUAL_THEME.border}`, borderRadius: '12px', transition: 'all 0.2s ease', cursor: 'pointer' }} onClick={() => onSelectDetail(task)}>
+      
+      {/* Left Structural Side Details Meta Frame */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
+        <div onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} style={{ width: '20px', height: '20px', borderRadius: '6px', border: `2px solid ${isDone ? VISUAL_THEME.accent : '#CBD5E1'}`, background: isDone ? VISUAL_THEME.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s ease' }}>
+          {isDone && <span style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
+        </div>
 
-            {/* Reminders & Metadata */}
-            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-500">
-              <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded">
-                ⏰ {task.type === 'Daily' ? `Daily at ${task.reminderTime}` : `One-time: ${task.dueDate}`}
+        <div style={{ minWidth: 0 }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 500, color: isDone ? VISUAL_THEME.textSec : VISUAL_THEME.text, textDecoration: isDone ? 'line-through' : 'none', margin: '0 0 6px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {task.title}
+          </h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: matchedCat?.bg || '#F1F5F9', color: matchedCat?.color || VISUAL_THEME.textSec, fontWeight: 500 }}>
+              {matchedCat ? `${matchedCat.icon} ${matchedCat.name}` : 'Task'}
+            </span>
+            {task.subcategory && (
+              <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: '#F8FAFC', color: VISUAL_THEME.textSec, border: `1px solid ${VISUAL_THEME.border}` }}>
+                {task.subcategory}
               </span>
-              {task.clientName && (
-                <span className="text-indigo-600 font-medium">💼 {task.clientName}</span>
-              )}
-            </div>
+            )}
+            {task.deadline && (
+              <span style={{ fontSize: '11px', color: VISUAL_THEME.textSec, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                📅 {task.deadline}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Expandable Sub-Tasks UI Section */}
-      {isExpanded && task.subTasks && (
-        <div className="mt-4 pl-7 pt-3 border-t border-slate-100 space-y-2">
-          {task.subTasks.map((sub) => (
-            <label key={sub.id} className="flex items-center gap-2 text-xs text-slate-700 hover:text-slate-900 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={sub.completed}
-                onChange={() => onToggleSubTask(task.id, sub.id)}
-                className="rounded text-emerald-600 w-3.5 h-3.5"
-              />
-              <span className={sub.completed ? 'line-through text-slate-400' : ''}>{sub.title}</span>
-            </label>
-          ))}
-        </div>
-      )}
+      {/* Right Core Automation Logs Operations Panel */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '12px' }} onClick={e => e.stopPropagation()}>
+        <span style={{ fontSize: '12px', color: VISUAL_THEME.textSec, fontWeight: 500 }}>
+          {task.time || '09:00 AM'}
+        </span>
+        <span style={{ fontSize: '11px', color: priorityInfo.color, background: priorityInfo.bg, padding: '3px 8px', borderRadius: '6px', fontWeight: 600, textTransform: 'uppercase' }}>
+          {priorityInfo.label}
+        </span>
+        <button onClick={() => onDelete(task.id)} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '14px', padding: '4px' }}>🗑️</button>
+      </div>
+
     </div>
   );
 }
