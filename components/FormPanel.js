@@ -1,90 +1,120 @@
-'use client';
-import React from 'react';
-import { useTheme } from '../context/ThemeContext';
-import { CATEGORIES, PRIORITY_COLORS, getS } from '../constants/taskConstants';
+// task-planner-main/components/FormPanel.js
+import React, { useState } from 'react';
 
-export default function FormPanel({ form, setForm, editTask, onSubmit, onClose, isMobile }) {
-  const { theme, t } = useTheme();
-  const S = getS(t);
+export default function FormPanel({ clients = [], onAddTask, onClose }) {
+  const [title, setTitle] = useState('');
+  const [taskType, setTaskType] = useState('One-time'); // Daily or One-time
+  const [reminderTime, setReminderTime] = useState('09:00');
+  const [dueDate, setDueDate] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
 
-  // High contrast adaptive border and ambient shadow for Dark Mode isolation
-  const modalBorder = theme === 'dark' ? '1px solid #282830' : '1px solid ' + t.border;
-  const modalShadow = theme === 'dark' 
-    ? '0 24px 64px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.15)' 
-    : '0 24px 64px rgba(0,0,0,0.15)';
-  
+  const filteredClients = clients.filter(c => 
+    c.name.toLowerCase().includes(clientSearch.toLowerCase())
+  );
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!title) return;
+    onAddTask({
+      title,
+      type: taskType,
+      reminderTime: taskType === 'Daily' ? reminderTime : null,
+      dueDate: taskType === 'One-time' ? dueDate : null,
+      clientId: selectedClient?.id || null,
+      clientName: selectedClient?.name || null,
+      status: 'Pending',
+      subTasks: []
+    });
+    onClose();
+  };
+
   return (
-    <div 
-      style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', padding: 16, boxSizing: 'border-box' }} 
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ background: t.surface, borderRadius: 16, padding: 28, width: '100%', maxWidth: 450, border: modalBorder, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: modalShadow }}>
-        
-        {/* Form Title Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: t.text, fontWeight: 700, letterSpacing: '-0.3px' }}>{editTask ? 'Edit Task' : 'New Task'}</h2>
-          <button onClick={onClose} style={{ background: theme === 'dark' ? '#1C1C1E' : '#F4F4F5', border: 'none', borderRadius: '50%', color: t.textSec, fontSize: 14, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>✕</button>
+    <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl p-6 border-l border-slate-200 z-50 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-slate-900">Create New Task</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">×</button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Main Inputs */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <input style={{ ...S.input, background: theme === 'dark' ? '#141416' : t.inputBg, border: theme === 'dark' ? '1px solid #222227' : '1px solid ' + t.border }} placeholder="Task title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} autoFocus />
+            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Task Title</label>
+            <input 
+              type="text" value={title} onChange={(e) => setTitle(e.target.value)} required
+              placeholder="e.g., Ansh se baat karni hai"
+              className="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
-          
-          <div>
-            <textarea style={{ ...S.input, background: theme === 'dark' ? '#141416' : t.inputBg, border: theme === 'dark' ? '1px solid #222227' : '1px solid ' + t.border, height: 75, resize: 'none', lineHeight: '1.5' }} placeholder="Description (optional)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+
+          {/* Dynamic Smart Searchable Client Input Field */}
+          <div className="relative">
+            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Assign Client</label>
+            <input 
+              type="text" 
+              placeholder="Search client name..." 
+              value={selectedClient ? selectedClient.name : clientSearch}
+              onFocus={() => setShowClientDropdown(true)}
+              onChange={(e) => {
+                setClientSearch(e.target.value);
+                if (selectedClient) setSelectedClient(null);
+              }}
+              className="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {showClientDropdown && (
+              <div className="absolute w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto z-50 text-sm">
+                {filteredClients.map(c => (
+                  <div 
+                    key={c.id} 
+                    onClick={() => {
+                      setSelectedClient(c);
+                      setShowClientDropdown(false);
+                    }}
+                    className="p-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
+                  >
+                    👤 {c.name}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          
-          {/* Category Engine Map Grid */}
+
           <div>
-            <label style={{ fontSize: 11, color: t.textSec, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Category</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-              {CATEGORIES.map(c => (
-                <button key={c.id} onClick={() => setForm({ ...form, category: c.id })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid ' + (form.category === c.id ? '#6C5CE7' : theme === 'dark' ? '#222227' : t.border), background: form.category === c.id ? 'rgba(108,92,231,0.12)' : theme === 'dark' ? '#141416' : t.inputBg, color: form.category === c.id ? '#8275f0' : t.textSec, fontSize: 13, fontWeight: form.category === c.id ? 600 : 500, cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'all 0.15s ease' }}>{c.icon} &nbsp;{c.name}</button>
-              ))}
+            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Schedule Type</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                type="button" onClick={() => setTaskType('One-time')}
+                className={`p-2 text-xs font-medium rounded-lg border text-center ${taskType === 'One-time' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white text-slate-600'}`}
+              >
+                One-time
+              </button>
+              <button 
+                type="button" onClick={() => setTaskType('Daily')}
+                className={`p-2 text-xs font-medium rounded-lg border text-center ${taskType === 'Daily' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white text-slate-600'}`}
+              >
+                Daily Reminder
+              </button>
             </div>
           </div>
 
-          {/* Subcategory and Date Setup row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {taskType === 'Daily' ? (
             <div>
-              <label style={{ fontSize: 11, color: t.textSec, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subcategory</label>
-              <input style={{ ...S.input, background: theme === 'dark' ? '#141416' : t.inputBg, border: theme === 'dark' ? '1px solid #222227' : '1px solid ' + t.border }} placeholder="e.g. project x" value={form.subcategory} onChange={e => setForm({ ...form, subcategory: e.target.value })} />
+              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Daily Reminder Time</label>
+              <input type="time" value={reminderTime} onChange={(e) => setTemplateTime(e.target.value)} className="w-full border border-slate-200 rounded-lg p-2 text-sm"/>
             </div>
+          ) : (
             <div>
-              <label style={{ fontSize: 11, color: t.textSec, fontWeight: 600, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Deadline</label>
-              <input type="date" style={{ ...S.input, background: theme === 'dark' ? '#141416' : t.inputBg, border: theme === 'dark' ? '1px solid #222227' : '1px solid ' + t.border, padding: '9px 10px', colorScheme: theme }} value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} />
+              <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Due Date</label>
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full border border-slate-200 rounded-lg p-2 text-sm"/>
             </div>
-          </div>
+          )}
+        </form>
+      </div>
 
-          {/* Priority Matrix Selector */}
-          <div>
-            <label style={{ fontSize: 11, color: t.textSec, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Priority</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {['high', 'medium', 'low'].map(p => (
-                <button key={p} onClick={() => setForm({ ...form, priority: p })} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid ' + (form.priority === p ? PRIORITY_COLORS[p] : theme === 'dark' ? '#222227' : t.border), background: form.priority === p ? PRIORITY_COLORS[p] + '18' : theme === 'dark' ? '#141416' : t.inputBg, color: form.priority === p ? PRIORITY_COLORS[p] : t.textSec, fontSize: 13, fontWeight: form.priority === p ? 600 : 500, cursor: 'pointer', transition: 'all 0.15s ease' }}>{p === 'high' ? '🔴' : p === 'medium' ? '🟡' : '⚪'} {p[0].toUpperCase() + p.slice(1)}</button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Recurrence Pattern Configuration */}
-          <div>
-            <label style={{ fontSize: 11, color: t.textSec, fontWeight: 600, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Type</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {['daily', 'weekly', 'monthly', 'one-time'].map(tp => (
-                <button key={tp} onClick={() => setForm({ ...form, type: tp })} style={{ flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: '1px solid ' + (form.type === tp ? '#6C5CE7' : theme === 'dark' ? '#222227' : t.border), background: form.type === tp ? 'rgba(108,92,231,0.12)' : theme === 'dark' ? '#141416' : t.inputBg, color: form.type === tp ? '#8275f0' : t.textSec, fontWeight: form.type === tp ? 600 : 500, transition: 'all 0.15s ease' }}>{tp[0].toUpperCase() + tp.slice(1)}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Dialog Action CTA Triggers */}
-          <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-            <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid ' + (theme === 'dark' ? '#222227' : t.border), background: theme === 'dark' ? '#1C1C1E' : t.inputBg, color: t.textSec, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Cancel</button>
-            <button onClick={onSubmit} style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: 'none', background: '#6C5CE7', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, boxShadow: '0 4px 12px rgba(108,92,231,0.2)' }}>Save</button>
-          </div>
-        </div>
-
+      <div className="pt-4 border-t border-slate-100 flex gap-2">
+        <button onClick={onClose} type="button" className="w-1/2 p-2.5 text-xs font-semibold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button onClick={handleSubmit} type="submit" className="w-1/2 p-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm">Save Task</button>
       </div>
     </div>
   );
