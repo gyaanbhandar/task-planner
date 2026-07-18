@@ -1,94 +1,68 @@
-'use client';
-import React from 'react';
-import { useTheme } from '../context/ThemeContext';
-import { CATEGORIES, getS } from '../constants/taskConstants';
-import { formatIndianDate } from '../utils/dateUtils';
+// task-planner-main/components/Sidebar.js
+import React, { useState } from 'react';
 
-export default function Sidebar({ mobile, view, setView, setSelectedCat, selectedCat, setSidebarOpen, catCounts, notifEnabled, enableNotifications, userName, handleLogout, setShowAdd }) {
-  const { theme, t, toggleTheme } = useTheme();
+export default function Sidebar({ currentFilter, setFilter, clients = [], onAddClient }) {
+  const [isOpenClients, setIsOpenClients] = useState(false);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: t.sidebar, color: t.text, boxSizing: 'border-box', fontFamily: 'inherit' }}>
-      
-      <div style={{ padding: '22px 18px', borderBottom: '1px solid ' + t.border, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 16, color: t.text, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6C5CE7' }} />
-            Task Planner
-          </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: t.textSec }}>{formatIndianDate()}</p>
+    <aside className="w-64 bg-slate-900 text-white min-h-screen p-4 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-xl font-bold tracking-wide">Task Planner 2.0</h1>
+          <span className="text-xs text-slate-400">v2.0</span>
         </div>
-        <button onClick={toggleTheme} style={{ background: 'none', border: 'none', fontSize: 15, cursor: 'pointer', color: t.textSec, padding: 2 }}>
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
-      </div>
 
-      <div style={{ padding: '14px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto' }}>
-        
-        {[
-          { id: 'today', icon: '📋', label: "Today's Focus" }, 
-          { id: 'all', icon: '📁', label: 'All Tasks' }, 
-          { id: 'ai', icon: '🤖', label: 'AI Plan' }
-        ].map(item => {
-          const isActive = view === item.id && !selectedCat;
-          return (
-            <button 
-              key={item.id} 
-              onClick={() => { setView(item.id); setSelectedCat(null); if (mobile) setSidebarOpen(false); }} 
-              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: isActive ? 600 : 500, background: isActive ? (theme === 'dark' ? '#1E1E24' : '#E4E4E7') : 'transparent', color: isActive ? '#6C5CE7' : t.textSec, textAlign: 'left' }}
-            >
-              <span>{item.icon}</span>
-              <span style={{ flex: 1 }}>{item.label}</span>
-            </button>
-          );
-        })}
-
-        <div style={{ height: 1, background: t.border, margin: '12px 4px' }} />
-        <span style={{ fontSize: 11, color: t.textMuted || t.textSec, paddingLeft: 12, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Categories</span>
-        
-        {CATEGORIES.map(c => {
-          const isCatActive = selectedCat === c.id;
-          return (
-            <button 
-              key={c.id} 
-              onClick={() => { setView('category'); setSelectedCat(c.id); if (mobile) setSidebarOpen(false); }} 
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: isCatActive ? 600 : 500, background: isCatActive ? 'rgba(108,92,231,0.08)' : 'transparent', color: isCatActive ? t.text : t.textSec }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span>{c.icon}</span>
-                <span>{c.name}</span>
-              </span>
-              {catCounts[c.id] > 0 && (
-                <span style={{ fontSize: 11, background: t.inputBg, color: c.color, padding: '1px 6px', borderRadius: 6, border: '1px solid ' + t.border, fontWeight: 600 }}>
-                  {catCounts[c.id]}
-                </span>
-              )}
-            </button>
-          );
-        })}
-
-        {!notifEnabled && (
-          <button onClick={enableNotifications} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(245,158,11,0.15)', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#F59E0B', fontWeight: 500, marginTop: 12 }}>
-            🔔 Enable Notifications
+        {/* Navigation Filters */}
+        <nav className="space-y-2">
+          <button 
+            onClick={() => setFilter({ type: 'all' })}
+            className={`w-full text-left p-2.5 rounded-lg text-sm font-medium transition ${!currentFilter.clientId ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            📂 All Focus Tasks
           </button>
-        )}
+
+          {/* Collapsible Client Section */}
+          <div className="pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between px-2 mb-2 text-xs font-semibold uppercase text-slate-500 tracking-wider">
+              <button 
+                onClick={() => setIsOpenClients(!isOpenClients)}
+                className="hover:text-white flex items-center gap-1"
+              >
+                {isOpenClients ? '▼' : '▶'} Clients
+              </button>
+              <button 
+                onClick={onAddClient}
+                className="hover:text-white text-sm font-bold bg-slate-800 px-1.5 rounded"
+              >
+                +
+              </button>
+            </div>
+
+            {isOpenClients && (
+              <div className="pl-4 space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                {clients.map((client) => (
+                  <button
+                    key={client.id}
+                    onClick={() => setFilter({ type: 'client', clientId: client.id })}
+                    className={`w-full text-left p-2 rounded text-xs transition truncate ${currentFilter.clientId === client.id ? 'bg-indigo-500/20 text-indigo-400 border-l-2 border-indigo-500' : 'text-slate-400 hover:bg-slate-800'}`}
+                  >
+                    👤 {client.name}
+                  </button>
+                ))}
+                {clients.length === 0 && (
+                  <p className="text-xs text-slate-600 p-2 italic">No clients added</p>
+                )}
+              </div>
+            )}
+          </div>
+        </nav>
       </div>
 
-      <div style={{ padding: '16px', borderTop: '1px solid ' + t.border, background: t.sidebar, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: '#6C5CE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#FFFFFF', fontWeight: 700 }}>
-            {userName[0].toUpperCase()}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, color: t.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
-          </div>
-          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}>Logout</button>
-        </div>
-        <button onClick={() => { setShowAdd(true); if (mobile) setSidebarOpen(false); }} style={{ width: '100%', background: '#6C5CE7', border: 'none', color: '#FFFFFF', padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          + New Task
-        </button>
+      {/* Profile Footer */}
+      <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+        <span className="truncate">👤 gyaanbhandar90</span>
+        <button className="text-rose-400 hover:underline">Logout</button>
       </div>
-
-    </div>
+    </aside>
   );
 }
