@@ -1,12 +1,9 @@
 'use client';
-import { useState } from 'react';
-import { useTheme } from '../context/ThemeContext';
-import { getS } from '../constants/taskConstants';
+import React, { useState } from 'react';
+import { VISUAL_THEME } from '../constants/taskConstants';
 import { authService } from '../services/authService';
 
 export default function AuthScreen({ onLogin }) {
-  const { theme, t } = useTheme();
-  const S = getS(t);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +13,8 @@ export default function AuthScreen({ onLogin }) {
   const [success, setSuccess] = useState('');
 
   const handleSubmit = async () => {
-    setError(''); setSuccess('');
+    setError(''); 
+    setSuccess('');
     if (!email || !password) { setError('Email aur password dono daalo'); return; }
     if (!isLogin && !name) { setError('Naam daalo'); return; }
     setLoading(true);
@@ -31,7 +29,7 @@ export default function AuthScreen({ onLogin }) {
       if (data.session) { 
         onLogin(data.session); 
       } else { 
-        setSuccess('Verification email bheja hai — inbox + spam check karo. Verify ke baad login karo.'); 
+        setSuccess('Verification email bheja hai — inbox check karo.'); 
         setIsLogin(true); 
       }
     }
@@ -40,31 +38,28 @@ export default function AuthScreen({ onLogin }) {
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') handleSubmit(); };
 
-  // Premium Any.do inspired typography stack
-  const fontStack = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-
   return (
-    <div style={{ background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: fontStack, padding: '20px', boxSizing: 'border-box' }}>
-      <div style={{ background: t.surface, borderRadius: '24px', padding: '40px 32px', width: '100%', maxWidth: '380px', border: '1px solid ' + t.border, boxShadow: theme === 'dark' ? '0 20px 40px rgba(0,0,0,0.4)' : '0 20px 40px rgba(0,0,0,0.06)' }}>
+    <div style={{ background: VISUAL_THEME.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box' }}>
+      <div style={{ background: '#FFFFFF', borderRadius: '24px', padding: '40px 32px', width: '100%', maxWidth: '380px', border: `1px solid ${VISUAL_THEME.border}`, boxShadow: '0 20px 40px rgba(0,0,0,0.03)' }}>
         
         {/* Header App Brand */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px', display: 'inline-block', filter: 'drop-shadow(0 2px 8px rgba(108,92,231,0.3))' }}>⚡</div>
-          <h1 style={{ margin: 0, fontSize: '24px', color: t.text, fontWeight: 700, letterSpacing: '-0.5px' }}>Task Planner</h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: t.textSec, fontWeight: 400 }}>AI-Powered Business OS</p>
+          <div style={{ fontSize: '36px', marginBottom: '12px', display: 'inline-block' }}>⚡</div>
+          <h1 style={{ margin: 0, fontSize: '24px', color: VISUAL_THEME.text, fontWeight: 700, letterSpacing: '-0.5px' }}>Task Planner</h1>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: VISUAL_THEME.textSec, fontWeight: 400 }}>AI-Powered Business OS</p>
         </div>
 
-        {/* Tab Switcher (Any.do Style Pill) */}
-        <div style={{ display: 'flex', marginBottom: '28px', background: theme === 'dark' ? '#141416' : '#F4F4F5', borderRadius: '30px', padding: '4px', border: '1px solid ' + t.border }}>
-          <button onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }} style={{ flex: 1, padding: '10px 0', borderRadius: '30px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, fontFamily: fontStack, background: isLogin ? '#6C5CE7' : 'transparent', color: isLogin ? '#fff' : t.textSec, transition: 'all 0.2s ease' }}>Login</button>
-          <button onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }} style={{ flex: 1, padding: '10px 0', borderRadius: '30px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, fontFamily: fontStack, background: !isLogin ? '#6C5CE7' : 'transparent', color: !isLogin ? '#fff' : t.textSec, transition: 'all 0.2s ease' }}>Sign Up</button>
+        {/* Tab Switcher */}
+        <div style={{ display: 'flex', marginBottom: '28px', background: '#F4F4F5', borderRadius: '30px', padding: '4px', border: `1px solid ${VISUAL_THEME.border}` }}>
+          <button onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }} style={{ flex: 1, padding: '10px 0', borderRadius: '30px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, background: isLogin ? VISUAL_THEME.accent : 'transparent', color: isLogin ? '#fff' : VISUAL_THEME.textSec, transition: 'all 0.2s ease' }}>Login</button>
+          <button onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }} style={{ flex: 1, padding: '10px 0', borderRadius: '30px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, background: !isLogin ? VISUAL_THEME.accent : 'transparent', color: !isLogin ? '#fff' : VISUAL_THEME.textSec, transition: 'all 0.2s ease' }}>Sign Up</button>
         </div>
 
         {/* Input Form Fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {!isLogin && (
             <input 
-              style={{ ...S.input, padding: '12px 16px', borderRadius: '12px', fontSize: '14px', background: theme === 'dark' ? '#141416' : '#FFFFFF' }} 
+              style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.text }} 
               placeholder="Full Name" 
               value={name} 
               onChange={e => setName(e.target.value)} 
@@ -72,7 +67,7 @@ export default function AuthScreen({ onLogin }) {
             />
           )}
           <input 
-            style={{ ...S.input, padding: '12px 16px', borderRadius: '12px', fontSize: '14px', background: theme === 'dark' ? '#141416' : '#FFFFFF' }} 
+            style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.text }} 
             type="email" 
             placeholder="Email" 
             value={email} 
@@ -80,7 +75,7 @@ export default function AuthScreen({ onLogin }) {
             onKeyDown={handleKeyDown} 
           />
           <input 
-            style={{ ...S.input, padding: '12px 16px', borderRadius: '12px', fontSize: '14px', background: theme === 'dark' ? '#141416' : '#FFFFFF' }} 
+            style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', fontSize: '14px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.text }} 
             type="password" 
             placeholder="Password (min 6 chars)" 
             value={password} 
@@ -95,15 +90,13 @@ export default function AuthScreen({ onLogin }) {
             onClick={handleSubmit} 
             disabled={loading} 
             style={{ 
-              ...S.primaryBtn, 
-              background: '#6C5CE7',
+              background: VISUAL_THEME.accent,
               color: '#FFFFFF',
               border: 'none',
               padding: '14px 0', 
               borderRadius: '12px', 
               fontSize: '14px', 
               fontWeight: 600, 
-              fontFamily: fontStack,
               cursor: 'pointer',
               marginTop: '8px',
               boxShadow: '0 4px 12px rgba(108,92,231,0.2)',
