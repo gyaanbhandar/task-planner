@@ -13,8 +13,8 @@ export const CATEGORIES = [
 ];
 
 export const CLIENTS = [
-  { id: 'abc', name: 'ABC', metrics: { total: 4, completed: 2 } },
-  { id: 'yun', name: 'YUN', metrics: { total: 3, completed: 1 } },
+  { id: 'abc', name: 'ABC Client', metrics: { total: 4, completed: 2 } },
+  { id: 'yun', name: 'YUN Client', metrics: { total: 3, completed: 1 } },
   { id: 'horizon', name: 'Horizon Solutions', metrics: { total: 5, completed: 3 } },
   { id: 'network', name: 'Network Scaffol', metrics: { total: 2, completed: 1 } },
   { id: 'telcos', name: 'Telcos Guru', metrics: { total: 3, completed: 2 } }
