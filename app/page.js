@@ -9,7 +9,7 @@ import { authService } from '../services/authService';
 import { taskService } from '../services/taskService';
 import { useTasks } from '../hooks/useTasks';
 
-// Sub-views component matrix imports
+// Import Views
 import ViewToday from '../components/ViewToday';
 import ViewCalendar from '../components/ViewCalendar';
 import ViewAllTasks from '../components/ViewAllTasks';
@@ -20,7 +20,6 @@ export default function ModernTaskPlannerOS() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // Navigation variables
   const [currentView, setCurrentView] = useState('today'); 
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeClient, setActiveClient] = useState(null);
@@ -31,23 +30,28 @@ export default function ModernTaskPlannerOS() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inspectedTask, setInspectedTask] = useState(null);
   
-  // Claude AI Pipeline variables
+  // Categories management workflow properties
+  const [customCategories, setCustomCategories] = useState(CATEGORIES);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [newCatName, setNewCatName] = useState('');
+
+  // AI Planner Engine Var
   const [aiPlanOutput, setAiPlanOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Form AM/PM inputs states
+  // Re-Engineered Input Fields Configuration Hooks
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
   const [modalCat, setModalCat] = useState('personal');
-  const [modalSub, setModalSub] = useState('');
+  const [modalSub, setModalSub] = useState('abc'); // Default dynamic client mapping select options
   const [modalPriority, setModalPriority] = useState('medium');
   const [modalDate, setModalDate] = useState(todayStr());
   const [modalHour, setModalHour] = useState('02');
   const [modalMin, setModalMin] = useState('00');
   const [modalPeriod, setModalPeriod] = useState('PM');
+  const [modalFrequency, setModalFrequency] = useState('one-time');
 
-  // Real Database integration hook call
-  const dummyToast = (msg) => console.log(`[Notification Alert]: ${msg}`);
+  const dummyToast = (msg) => console.log(`[Notification]: ${msg}`);
   const {
     tasks,
     loading: tasksLoading,
@@ -73,53 +77,60 @@ export default function ModernTaskPlannerOS() {
     if (session) { loadTasks(); }
   }, [session, loadTasks]);
 
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Syncing operational data grids...</div>;
+  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Connecting secure frameworks sync...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 
-  // Form submit handler with custom metadata mapping properties
   const handleCreateTaskSubmit = async () => {
     if (!modalTitle.trim()) return;
     const constructedTime = `${modalHour}:${modalMin} ${modalPeriod}`;
-    const syntheticFormObj = {
+    const selectedClientObj = CLIENTS.find(c => c.id === modalSub);
+    const clientLabel = selectedClientObj ? selectedClientObj.name : 'General';
+
+    const formObj = {
       title: modalTitle,
-      description: modalDesc,
+      description: modalDesc ? modalDesc + ` (Time Marker: ${constructedTime})` : `Time Set: ${constructedTime}`,
       category: modalCat,
-      subcategory: modalSub || 'General',
+      subcategory: clientLabel,
       priority: modalPriority,
-      type: 'one-time',
+      type: modalFrequency, // Dynamic frequency options connected directly
       deadline: modalDate
     };
 
     try {
-      // Direct push to Supabase via taskService layers
-      await taskService.createTask(syntheticFormObj, session.user.id);
-      // Injected custom time indicator inside description string to save timeline configurations safely
-      await supabase.from('tasks').update({ description: modalDesc ? modalDesc + ` (Time: ${constructedTime})` : `Time: ${constructedTime}` }).eq('title', modalTitle);
+      await taskService.createTask(formObj, session.user.id);
       await loadTasks();
       setShowCreateModal(false);
-      setModalTitle(''); setModalDesc(''); setModalSub('');
+      setModalTitle(''); setModalDesc('');
     } catch (err) {
-      // Direct local state push fallback on local client environments testing rules
-      const fallbackTask = { id: 't_local_' + Date.now(), ...syntheticFormObj, status: 'pending', time: constructedTime };
-      setTasks(prev => [fallbackTask, ...prev]);
-      setShowCreateModal(false);
+      console.error(err);
     }
+  };
+
+  const executeCategoryOperation = () => {
+    if(!newCatName.trim()) return;
+    if(editingCategory) {
+      setCustomCategories(prev => prev.map(c => c.id === editingCategory ? { ...c, name: newCatName } : c));
+      setEditingCategory(null);
+    } else {
+      const uniqueId = 'cat_' + Date.now();
+      setCustomCategories(prev => [...prev, { id: uniqueId, name: newCatName, icon: '📂', color: '#6366F1', bg: 'rgba(99,102,241,0.04)' }]);
+    }
+    setNewCatName('');
   };
 
   const triggerAiPlanCall = async () => {
     setAiLoading(true);
     try {
-      const summary = tasks.map(t => `- [${t.priority.toUpperCase()}] ${t.title} (Context: ${t.subcategory})`).join('\n');
-      const resPlan = await taskService.fetchAiPlan(summary);
-      setAiPlanOutput(resPlan);
+      const logSum = tasks.map(t => `- ${t.title} [${t.priority}]`).join('\n');
+      const res = await taskService.fetchAiPlan(logSum);
+      setAiPlanOutput(res);
     } catch(e) {
-      setAiPlanOutput('AI Calibration completed with fallback instructions limits preset parameters.');
+      setAiPlanOutput('AI engine execution failure fallback constraints triggers.');
     } finally {
       setAiLoading(false);
     }
   };
 
-  // Logic metric indicators tracking calculations
   const countToday = tasks.filter(t => t.deadline === todayStr()).length;
   const countPending = tasks.filter(t => t.status === 'pending').length;
   const countCompleted = tasks.filter(t => t.status === 'done').length;
@@ -152,7 +163,7 @@ export default function ModernTaskPlannerOS() {
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px' }}>☰</button>}
-            <h1 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize' }}>{currentView.replace('_', ' ')} Panel</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize', margin: 0 }}>{currentView.replace('_', ' ')} Panel</h1>
           </div>
           <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
         </div>
@@ -160,19 +171,31 @@ export default function ModernTaskPlannerOS() {
         <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px' }}>
           
           {['today', 'upcoming', 'category', 'client_workspace'].includes(currentView) && (
-            <ViewToday tasks={tasks} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} isMobile={isMobile} formatIndianDate={formatIndianDate} />
+            <ViewToday tasks={tasks} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} />
           )}
 
-          {currentView === 'calendar' && <ViewCalendar tasks={tasks} />}
-          {currentView === 'all_tasks' && <ViewAllTasks tasks={tasks} />}
-          {currentView === 'recurring' && <ViewRecurring tasks={tasks} />}
-          {currentView === 'notifications' && <ViewNotifications />}
+          {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={setInspectedTask} />}
+          {currentView === 'all_tasks' && <ViewAllTasks tasks={tasks} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} />}
+          {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} />}
+          {currentView === 'notifications' && <ViewNotifications setInspectedTask={setInspectedTask} />}
           
           {currentView === 'manage_categories' && (
-            <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}` }}>
-              <h3 style={{ marginBottom: '16px' }}>Workspaces Taxonomy Context System Settings</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                {CATEGORIES.map(c => <div key={c.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}` }}>{c.icon} &nbsp; {c.name}</div>)}
+            <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px', boxSizing: 'border-box' }}>
+              <h3 style={{ margin: 0 }}>Workspaces Category Management Settings Hub</h3>
+              <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
+                <input type="text" placeholder={editingCategory ? "Update context name" : "Insert new category tag"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
+                <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingCategory ? 'Update' : 'Add Node'}</button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                {customCategories.map(c => (
+                  <div key={c.id} style={{ padding: '14px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500 }}>{c.icon} &nbsp; {c.name}</span>
+                    <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: VISUAL_THEME.accent, cursor: 'pointer' }}>
+                      <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); }}>✏️</span>
+                      <span onClick={() => setCustomCategories(prev => prev.filter(item => item.id !== c.id))} style={{ color: '#EF4444' }}>🗑️</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -180,40 +203,95 @@ export default function ModernTaskPlannerOS() {
           {currentView === 'ai_planner' && (
             <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', textAlign: 'center' }}>
               <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Claude AI Plan Optimization Calibration</h3>
-              <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, maxWidth: '460px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>Parse dynamic data layers straight to cloud models to execute routines mapping logs safely.</p>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>AI Schedule Core Engine Calibration</h3>
               <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 24px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-                {aiLoading ? 'Calibrating Vector Maps...' : '🤖 Run AI Schedule Engine'}
+                {aiLoading ? 'Calibrating Vector Nodes Matrix...' : '🤖 Run AI Generation'}
               </button>
-              {aiPlanOutput && (
-                <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, textAlign: 'left', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
-                  {aiPlanOutput}
-                </div>
-              )}
+              {aiPlanOutput && <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, textAlign: 'left', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{aiPlanOutput}</div>}
             </div>
           )}
 
         </div>
       </div>
 
-      {/* FORM MODAL POPUP (AM/PM OPTIMIZED SELECTION ELEMENTS) */}
+      {/* DETAILED ACTION METADATA PANEL SHEET */}
+      {inspectedTask && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setInspectedTask(null)} />
+          <div style={{ width: isMobile ? '100vw' : '420px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '16px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: VISUAL_THEME.accent }}>Modify Operation Parameters Sheet</span>
+              <button onClick={() => setInspectedTask(null)} style={{ border: 'none', background: 'transparent', fontSize: '16px', cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600 }}>Update Title</label>
+              <input type="text" value={inspectedTask.title} onChange={e => setInspectedTask({ ...inspectedTask, title: e.target.value })} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC' }} />
+              
+              <label style={{ fontSize: '12px', fontWeight: 600 }}>Update Description Details</label>
+              <textarea value={inspectedTask.description || ''} onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '80px', resize: 'none' }} />
+            </div>
+            <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
+              <button onClick={async () => {
+                await taskService.updateTask(inspectedTask.id, inspectedTask);
+                await loadTasks();
+                setInspectedTask(null);
+              }} style={{ flex: 1, padding: '14px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Save Changes Node</button>
+              <button onClick={async () => {
+                await handleDeleteTask(inspectedTask.id);
+                setInspectedTask(null);
+              }} style={{ padding: '14px', background: '#FEE2E2', color: '#EF4444', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>🗑️ Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULLY SYNCHRONIZED INTERACTIVE TASK MODAL POPUP */}
       {showCreateModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', padding: isMobile ? '0' : '24px', boxSizing: 'border-box' }} onClick={(e) => { if(e.target === e.currentTarget) setShowCreateModal(false); }}>
           <div style={{ background: '#FFFFFF', borderRadius: isMobile ? '24px 24px 0 0' : '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Create Task Node</h2><button onClick={() => setShowCreateModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer' }}>✕</button></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Create Task</h2><button onClick={() => setShowCreateModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer' }}>✕</button></div>
             
             <input type="text" placeholder="Task Title *" value={modalTitle} onChange={e => setModalTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
             <textarea placeholder="Description notes details..." value={modalDesc} onChange={e => setModalDesc(e.target.value)} style={{ width: '100%', height: '60px', padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', resize: 'none', boxSizing: 'border-box' }} />
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <select value={modalCat} onChange={e => setModalCat(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>
-                {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-              </select>
-              <input type="text" placeholder="Client Name / Workspace" value={modalSub} onChange={e => setModalSub(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }} />
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Category Context</label>
+                <select value={modalCat} onChange={e => setModalCat(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>
+                  {customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Assign Client</label>
+                <select value={modalSub} onChange={e => setModalSub(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
+                  <option value="none">General / No Client</option>
+                  {CLIENTS.map(cl => <option key={cl.id} value={cl.id}>🏢 {cl.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Interval Frequency</label>
+                <select value={modalFrequency} onChange={e => setModalFrequency(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
+                  <option value="one-time">One-Time Task</option>
+                  <option value="daily">Daily (Recurring)</option>
+                  <option value="weekly">Weekly Routine</option>
+                  <option value="monthly">Monthly Audit</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Priority Index</label>
+                <select value={modalPriority} onChange={e => setModalPriority(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>
+                  <option value="low">🔹 Low Priority</option>
+                  <option value="medium">🔸 Medium Priority</option>
+                  <option value="high">🔺 High Priority</option>
+                </select>
+              </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Milestone Target Reminder (Date & Time)</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Milestone Target Reminder</label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <input type="date" value={modalDate} onChange={e => setModalDate(e.target.value)} style={{ flex: 2, minWidth: '120px', padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} />
                 <select value={modalHour} onChange={e => setModalHour(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', boxSizing: 'border-box' }}>
@@ -229,38 +307,10 @@ export default function ModernTaskPlannerOS() {
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Priority Flag</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {Object.keys(PRIORITY_CONFIG).map(k => (
-                  <button key={k} type="button" onClick={() => setModalPriority(k)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: modalPriority === k ? `2px solid ${PRIORITY_CONFIG[k].color}` : `1px solid ${VISUAL_THEME.border}`, background: modalPriority === k ? PRIORITY_CONFIG[k].bg : '#FFFFFF', color: PRIORITY_CONFIG[k].color, fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    {PRIORITY_CONFIG[k].icon} {PRIORITY_CONFIG[k].label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div style={{ display: 'flex', gap: '10px', borderTop: `1px solid ${VISUAL_THEME.border}`, paddingTop: '16px', marginTop: '8px' }}>
               <button type="button" onClick={() => setShowCreateModal(false)} style={{ flex: 1, padding: '12px 0', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 600 }}>Cancel</button>
-              <button type="button" onClick={handleCreateTaskSubmit} style={{ flex: 1, padding: '12px 0', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}>Save Task Block</button>
+              <button type="button" onClick={handleCreateTaskSubmit} style={{ flex: 1, padding: '12px 0', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFFFFF', fontSize: '13px', fontWeight: 600 }}>Save Task</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {inspectedTask && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setInspectedTask(null)} />
-          <div style={{ width: isMobile ? '100vw' : '420px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '16px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: VISUAL_THEME.accent }}>Inspection Meta Log Sheet</span>
-              <button onClick={() => setInspectedTask(null)} style={{ border: 'none', background: 'transparent', fontSize: '16px', cursor: 'pointer' }}>✕</button>
-            </div>
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 8px 0' }}>{inspectedTask.title}</h3>
-              <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, lineHeight: 1.5 }}>{inspectedTask.description || 'No contextual operational descriptors mapped.'}</p>
-            </div>
-            <button onClick={() => { handleToggleStatus(inspectedTask.id); setInspectedTask(null); }} style={{ marginTop: 'auto', width: '100%', padding: '14px', background: '#10B981', color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Toggle Complete State ✓</button>
           </div>
         </div>
       )}
