@@ -7,7 +7,7 @@ export default function ViewToday({ tasks, countToday, countPending, countComple
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-        <h1 style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 700, color: VISUAL_THEME.text, marginBottom: '4px' }}>Good morning, Anukant 👋</h1>
+        <h1 style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 700, color: VISUAL_THEME.text, marginBottom: '4px' }}>Dashboard Overview</h1>
         <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec }}>{formatIndianDate()}</p>
       </div>
 
@@ -18,7 +18,7 @@ export default function ViewToday({ tasks, countToday, countPending, countComple
           { id: 'pending', label: 'Incomplete Stack', count: countPending, icon: '⏳', bg: '#FFFBEB' },
           { id: 'completed', label: 'Verified Complete', count: countCompleted, icon: '✅', bg: '#ECFDF5' }
         ].map(stat => (
-          <div key={stat.id} onClick={() => setDashboardFilter(stat.id)} style={{ padding: '16px', background: '#FFFFFF', borderRadius: '12px', border: dashboardFilter === stat.id ? `2px solid ${VISUAL_THEME.accent}` : `1px solid ${VISUAL_THEME.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+          <div key={stat.id} onClick={() => setDashboardFilter(stat.id)} style={{ padding: '16px', background: '#FFFFFF', borderRadius: '12px', border: dashboardFilter === stat.id ? `2px solid ${VISUAL_THEME.accent}` : `1px solid ${VISUAL_THEME.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', boxSizing: 'border-box' }}>
             <div>
               <span style={{ fontSize: '11px', fontWeight: 600, color: VISUAL_THEME.textSec, display: 'block', marginBottom: '4px' }}>{stat.label}</span>
               <span style={{ fontSize: '20px', fontWeight: 700 }}>{stat.count}</span>
@@ -29,14 +29,14 @@ export default function ViewToday({ tasks, countToday, countPending, countComple
       </div>
 
       <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '20px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '16px' }}>Active Workspace Registry</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '16px' }}>Faceted Workspaces Flow Logs</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {viewableTasksList.length > 0 ? (
             viewableTasksList.map(t => (
-              <TaskCard key={t.id} task={t} onToggle={handleToggleStatus} onSelectDetail={setInspectedTask} onDelete={handleDeleteTask} />
+              <TaskCard key={t.id} task={t} onToggle={handleToggleStatus} onSelectDetail={setInspectedTask} onDelete={handleDeleteTask} isMobile={isMobile} />
             ))
           ) : (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: VISUAL_THEME.textSec, fontSize: '13px' }}>No metrics map inside current viewport.</div>
+            <div style={{ padding: '40px 0', textAlign: 'center', color: VISUAL_THEME.textSec, fontSize: '13px' }}>No items mapped inside current canvas filters parameters.</div>
           )}
         </div>
       </div>
