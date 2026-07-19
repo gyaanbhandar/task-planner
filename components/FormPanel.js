@@ -1,8 +1,8 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CATEGORIES, PRIORITY_CONFIG, VISUAL_THEME } from '../constants/taskConstants';
 
-export default function FormPanel({ form: initialForm, editTask, onSubmit, onClose, isMobile }) {
+export default function FormPanel({ form: initialForm, editTask, onSubmit, onClose }) {
   const [localForm, setLocalForm] = useState(initialForm || {
     title: '',
     description: '',
@@ -12,6 +12,18 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
     deadline: '',
     type: 'daily'
   });
+
+  // Client-side testing structure for device viewport verification
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
+  useEffect(() => {
+    const checkWidth = () => {
+      setIsMobileDevice(window.innerWidth < 1024);
+    };
+    checkWidth();
+    window.addEventListener('resize', checkWidth);
+    return () => window.removeEventListener('resize', checkWidth);
+  }, []);
 
   const handleSave = () => {
     if (!localForm.title.trim()) return;
@@ -25,11 +37,11 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
         inset: 0, 
         zIndex: 9999, 
         display: 'flex', 
-        alignItems: 'center', 
+        alignItems: isMobileDevice ? 'flex-end' : 'center', 
         justifyContent: 'center', 
         background: 'rgba(15, 23, 42, 0.4)', 
-        backdropFilter: 'blur(4px)', 
-        padding: isMobile ? '0' : '24px', 
+        backdropFilter: 'blur(8px)', 
+        padding: isMobileDevice ? '0' : '24px', 
         boxSizing: 'border-box'
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -37,26 +49,34 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
       <div 
         style={{ 
           background: '#FFFFFF', 
-          borderRadius: isMobile ? '0' : '20px', 
-          padding: isMobile ? '24px 20px' : '32px', 
+          borderRadius: isMobileDevice ? '24px 24px 0 0' : '20px', 
+          padding: isMobileDevice ? '28px 20px 40px' : '32px', 
           width: '100%', 
           maxWidth: '520px', 
-          height: isMobile ? '100vh' : 'auto', 
-          maxHeight: isMobile ? '100vh' : '85vh', 
-          overflowY: 'auto', 
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)', 
-          border: isMobile ? 'none' : `1px solid ${VISUAL_THEME.border}`,
+          height: isMobileDevice ? 'auto' : 'auto', 
+          maxHeight: isMobileDevice ? '92vh' : 'none', 
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', 
+          border: isMobileDevice ? 'none' : `1px solid ${VISUAL_THEME.border}`,
           boxSizing: 'border-box',
           display: 'flex', 
           flexDirection: 'column', 
           gap: '20px',
-          outline: 'none'
+          outline: 'none',
+          scrollbarWidth: 'none', /* Firefox scroll removal */
+          msOverflowStyle: 'none' /* IE scroll removal */
         }}
       >
+        {/* Hide Chrome/Safari Webkit scrollbars completely */}
+        <style dangerouslySetInnerHTML={{__html: `
+          div::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+        `}} />
+
         {/* Modal Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', boxSizing: 'border-box' }}>
-          <div style={{ paddingRight: '12px' }}>
-            <h2 style={{ fontSize: isMobile ? '22px' : '20px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0, letterSpacing: '-0.5px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+          <div>
+            <h2 style={{ fontSize: isMobileDevice ? '22px' : '20px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0, letterSpacing: '-0.5px' }}>
               {editTask ? 'Edit Task' : 'Create New Task'}
             </h2>
             <p style={{ fontSize: '12px', color: VISUAL_THEME.textSec, margin: '6px 0 0 0', lineHeight: '1.4' }}>
@@ -85,71 +105,71 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
         </div>
 
         {/* Input Form Fields Framework */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, width: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
           {/* Task Title */}
-          <div style={{ width: '100%', boxSizing: 'border-box' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '6px' }}>Task Title *</label>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Task Title *</label>
             <input 
               type="text" 
               placeholder="e.g., Ansh se baat karni hai" 
               value={localForm.title} 
               onChange={e => setLocalForm({ ...localForm, title: e.target.value })} 
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', color: VISUAL_THEME.text, background: '#F8FAFC', boxSizing: 'border-box', transition: 'all 0.2s' }}
             />
           </div>
 
           {/* Description */}
-          <div style={{ width: '100%', boxSizing: 'border-box' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '6px' }}>Description</label>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Description</label>
             <textarea 
               placeholder="Add details or dynamic context parameters..." 
               value={localForm.description} 
               onChange={e => setLocalForm({ ...localForm, description: e.target.value })} 
-              style={{ width: '100%', height: '80px', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', resize: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', height: '80px', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', color: VISUAL_THEME.text, background: '#F8FAFC', resize: 'none', boxSizing: 'border-box', transition: 'all 0.2s' }}
             />
           </div>
 
-          {/* Grid Rows for Category & Subcategory */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', width: '100%', boxSizing: 'border-box' }}>
+          {/* Dual Inputs Grid Layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobileDevice ? '1fr' : '1fr 1fr', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '6px' }}>Category</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Category</label>
               <select 
                 value={localForm.category} 
                 onChange={e => setLocalForm({ ...localForm, category: e.target.value })} 
-                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', cursor: 'pointer', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', color: VISUAL_THEME.text, background: '#F8FAFC', cursor: 'pointer', boxSizing: 'border-box' }}
               >
                 {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '6px' }}>Client / Workspace</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Client / Workspace</label>
               <input 
                 type="text" 
                 placeholder="e.g., Lead Gen, Horizon" 
                 value={localForm.subcategory} 
                 onChange={e => setLocalForm({ ...localForm, subcategory: e.target.value })} 
-                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', color: VISUAL_THEME.text, background: '#F8FAFC', boxSizing: 'border-box' }}
               />
             </div>
           </div>
 
-          {/* Grid Rows for Due Date & Repeat Type */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', width: '100%', boxSizing: 'border-box' }}>
+          {/* Date and Repeat Setup */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobileDevice ? '1fr' : '1fr 1fr', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '6px' }}>Due Date</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Due Date</label>
               <input 
                 type="date" 
                 value={localForm.deadline} 
                 onChange={e => setLocalForm({ ...localForm, deadline: e.target.value })} 
-                style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', color: VISUAL_THEME.text, background: '#F8FAFC', boxSizing: 'border-box' }}
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '6px' }}>Schedule Type</label>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Schedule Type</label>
               <select 
                 value={localForm.type} 
                 onChange={e => setLocalForm({ ...localForm, type: e.target.value })} 
-                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', cursor: 'pointer', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', color: VISUAL_THEME.text, background: '#F8FAFC', cursor: 'pointer', boxSizing: 'border-box' }}
               >
                 <option value="one-time">One-time Task</option>
                 <option value="daily">Daily Reminder</option>
@@ -159,9 +179,9 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
             </div>
           </div>
 
-          {/* Priority Matrix Selector */}
-          <div style={{ width: '100%', boxSizing: 'border-box' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '8px' }}>Priority Matrix Level</label>
+          {/* Priority Controls Framework */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Priority Level</label>
             <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
               {Object.keys(PRIORITY_CONFIG).map(pKey => {
                 const conf = PRIORITY_CONFIG[pKey];
@@ -173,12 +193,12 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
                     onClick={() => setLocalForm({ ...localForm, priority: pKey })}
                     style={{ 
                       flex: 1, 
-                      padding: '11px 8px', 
-                      borderRadius: '10px', 
+                      padding: '12px 8px', 
+                      borderRadius: '12px', 
                       border: isSelected ? `2px solid ${conf.color}` : `1px solid ${VISUAL_THEME.border}`, 
                       background: isSelected ? conf.bg : '#FFFFFF', 
                       color: conf.color, 
-                      fontSize: isMobile ? '12px' : '13px', 
+                      fontSize: '13px', 
                       fontWeight: 600, 
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
@@ -193,19 +213,19 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
           </div>
         </div>
 
-        {/* Dialog Actions Panel Footer */}
-        <div style={{ display: 'flex', gap: '12px', borderTop: `1px solid ${VISUAL_THEME.border}`, paddingTop: '20px', marginTop: 'auto', width: '100%', boxSizing: 'border-box', paddingBottom: isMobile ? '20px' : '0' }}>
+        {/* Modal Footer Controls */}
+        <div style={{ display: 'flex', gap: '12px', borderTop: `1px solid ${VISUAL_THEME.border}`, paddingTop: '20px', marginTop: '12px', width: '100%' }}>
           <button 
             type="button"
             onClick={onClose} 
-            style={{ flex: 1, padding: '12px 0', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.textSec, cursor: 'pointer', fontSize: '14px', fontWeight: 500, boxSizing: 'border-box' }}
+            style={{ flex: 1, padding: '14px 0', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.textSec, cursor: 'pointer', fontSize: '14px', fontWeight: 600, boxSizing: 'border-box' }}
           >
             Cancel
           </button>
           <button 
             type="button"
             onClick={handleSave} 
-            style={{ flex: 1, padding: '12px 0', borderRadius: '10px', border: 'none', background: VISUAL_THEME.accent, color: '#FFFFFF', cursor: 'pointer', fontSize: '14px', fontWeight: 600, boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)', boxSizing: 'border-box' }}
+            style={{ flex: 1, padding: '14px 0', borderRadius: '12px', border: 'none', background: VISUAL_THEME.accent, color: '#FFFFFF', cursor: 'pointer', fontSize: '14px', fontWeight: 600, boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)', boxSizing: 'border-box' }}
           >
             Save Task
           </button>
