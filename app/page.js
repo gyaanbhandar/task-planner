@@ -8,8 +8,9 @@ import AuthScreen from '../components/AuthScreen';
 import { authService } from '../services/authService';
 import { taskService } from '../services/taskService';
 import { useTasks } from '../hooks/useTasks';
+import { supabase } from '../lib/supabase'; // EXACT FIX: Missing Database reference imported safely
 
-// Import Views
+// Import Views Mappings
 import ViewToday from '../components/ViewToday';
 import ViewCalendar from '../components/ViewCalendar';
 import ViewAllTasks from '../components/ViewAllTasks';
@@ -36,7 +37,7 @@ export default function ModernTaskPlannerOS() {
   const [aiPlanOutput, setAiPlanOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Form states
+  // Form parameters control states
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
   const [modalCat, setModalCat] = useState('personal');
@@ -47,8 +48,9 @@ export default function ModernTaskPlannerOS() {
   const [modalMin, setModalMin] = useState('00');
   const [modalPeriod, setModalPeriod] = useState('PM');
   const [modalFrequency, setModalFrequency] = useState('one-time');
+  const [inspectedTask, setInspectedTask] = useState(null);
 
-  const dummyToast = (msg) => console.log(`[Notification]: ${msg}`);
+  const dummyToast = (msg) => console.log(`[Notification Alert]: ${msg}`);
   const {
     tasks,
     loading: tasksLoading,
@@ -67,7 +69,7 @@ export default function ModernTaskPlannerOS() {
     if (session) { loadTasks(); }
   }, [session, loadTasks]);
 
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Syncing data grids...</div>;
+  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Connecting secure nodes framework sync...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 
   const handleCreateTaskSubmit = async () => {
@@ -166,13 +168,15 @@ export default function ModernTaskPlannerOS() {
       <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
           <h1 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize', margin: 0 }}>{currentView.replace('_', ' ')} View</h1>
-          <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
+          <button onClick={() => setInspectedTask(null) || setModalTitle('') || setModalDesc('') || setModalDate(todayStr()) || document.getElementById('global-modal-trigger')?.click()} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
+          {/* Invisible anchor helper for safe modal launch state rendering without framework locks */}
+          <button id="global-modal-trigger" onClick={() => setShowCreateModal(true)} style={{ display: 'none' }}></button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
           
           {['today', 'upcoming', 'category', 'client_workspace'].includes(currentView) && (
-            <ViewToday tasks={tasks} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} formatIndianDate={formatIndianDate} userName={session.user.email} />
+            <ViewToday tasks={tasks} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} isMobile={false} formatIndianDate={formatIndianDate} userName={session.user.email} />
           )}
 
           {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={setInspectedTask} />}
@@ -183,7 +187,6 @@ export default function ModernTaskPlannerOS() {
           {currentView === 'manage_categories' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', boxSizing: 'border-box' }}>
               
-              {/* Category Management Block */}
               <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <h3 style={{ margin: 0 }}>Categories Hub</h3>
                 <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
@@ -203,7 +206,6 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
-              {/* Client Sub-categories Management Block */}
               <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <h3 style={{ margin: 0 }}>Client List Hub (Sub-categories of Clients)</h3>
                 <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
@@ -229,7 +231,7 @@ export default function ModernTaskPlannerOS() {
         </div>
       </div>
 
-      {/* INSPECTION OVERLAY PANEL */}
+      {/* INSPECTION OVERLAY ACTION PANEL ELEMENT */}
       {inspectedTask && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setInspectedTask(null)} />
@@ -255,9 +257,9 @@ export default function ModernTaskPlannerOS() {
         </div>
       )}
 
-      {/* CREATE TASK MODAL */}
+      {/* FIXED MODAL POPUP LAYER */}
       {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', boxSizing: 'border-box' }} onClick={(e) => { if(e.target === e.currentTarget) setShowCreateModal(false); }}>
           <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Create Task</h2><button onClick={() => setShowCreateModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer' }}>✕</button></div>
             
