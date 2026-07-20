@@ -4,7 +4,6 @@ import { CATEGORIES, CLIENTS, VISUAL_THEME } from '../constants/taskConstants';
 
 export default function Sidebar({ currentView, onViewChange, activeCategory, activeClient, userName, onLogout }) {
   const [clientsExpanded, setClientsExpanded] = useState(true);
-
   const cleanName = userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'Anukant';
 
   return (
@@ -22,37 +21,51 @@ export default function Sidebar({ currentView, onViewChange, activeCategory, act
         {[
           { id: 'today', label: 'Today', icon: '☀️' },
           { id: 'upcoming', label: 'Upcoming Tasks', icon: '📅' },
-          { id: 'calendar', label: 'Calendar Grid', icon: '🗓️' },
+          { id: 'calendar', label: 'Calendar View', icon: '🗓️' },
           { id: 'all_tasks', label: 'All Tasks', icon: '📋' },
           { id: 'ai_planner', label: 'AI Planner', icon: '🧠' },
           { id: 'recurring', label: 'Recurring Tasks', icon: '🔄' }
         ].map(v => {
           const isSelected = currentView === v.id && !activeCategory && !activeClient;
           return (
-            <button key={v.id} onClick={() => onViewChange(v.id, null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', border: 'none', background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent', color: isSelected ? VISUAL_THEME.accent : VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
+            <button key={v.id} onClick={() => onViewChange(v.id, null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', border: 'none', background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'transparent', color: isSelected ? VISUAL_THEME.accent : VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
               <span>{v.icon}</span><span>{v.label}</span>
             </button>
           );
         })}
 
         <div style={{ marginTop: '20px', marginBottom: '6px', fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '12px' }}>Categories</div>
-        {CATEGORIES.slice(0, 4).map(c => (
-          <button key={c.id} onClick={() => onViewChange('category', c.id, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', borderRadius: '8px', border: 'none', background: currentView === 'category' && activeCategory === c.id ? 'rgba(99, 102, 241, 0.04)' : 'transparent', color: VISUAL_THEME.text, fontSize: '13px', cursor: 'pointer', textAlign: 'left' }}>
-            <span>{c.icon}</span><span>{c.name}</span>
-          </button>
-        ))}
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '20px', paddingLeft: '12px', paddingRight: '8px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' }}>Clients</span>
-          <button onClick={() => setClientsExpanded(!clientsExpanded)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: VISUAL_THEME.textSec, fontSize: '12px' }}>{clientsExpanded ? '▲' : '▼'}</button>
-        </div>
         
-        {clientsExpanded && CLIENTS.map(cl => (
-          <button key={cl.id} onClick={() => onViewChange('client_workspace', null, cl.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 20px', borderRadius: '6px', border: 'none', background: currentView === 'client_workspace' && activeClient === cl.id ? '#F4F4F5' : 'transparent', color: VISUAL_THEME.textSec, fontSize: '13px', cursor: 'pointer', textAlign: 'left' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#6366F1' }} />
-            <span>{cl.name}</span>
-          </button>
-        ))}
+        {CATEGORIES.map(c => {
+          if (c.id === 'clients') {
+            const isClientsViewActive = currentView === 'category' && activeCategory === 'clients' && !activeClient;
+            return (
+              <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: isClientsViewActive ? 'rgba(99, 102, 241, 0.04)' : 'transparent' }}>
+                  <button onClick={() => onViewChange('category', 'clients', null)} style={{ border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', gap: '12px', padding: 0, color: VISUAL_THEME.text, fontSize: '13px', fontWeight: isClientsViewActive ? 600 : 400, cursor: 'pointer', textAlign: 'left', flex: 1 }}>
+                    <span>{c.icon}</span><span>{c.name}</span>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setClientsExpanded(!clientsExpanded); }} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: VISUAL_THEME.textSec, fontSize: '11px', padding: '0 4px' }}>
+                    {clientsExpanded ? '▲' : '▼'}
+                  </button>
+                </div>
+
+                {clientsExpanded && CLIENTS.map(cl => (
+                  <button key={cl.id} onClick={() => onViewChange('client_workspace', 'clients', cl.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 28px', borderRadius: '6px', border: 'none', background: currentView === 'client_workspace' && activeClient === cl.id ? '#F4F4F5' : 'transparent', color: VISUAL_THEME.textSec, fontSize: '12px', cursor: 'pointer', textAlign: 'left' }}>
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: VISUAL_THEME.accent }} />
+                    <span>{cl.name}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          }
+
+          return (
+            <button key={c.id} onClick={() => onViewChange('category', c.id, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', borderRadius: '8px', border: 'none', background: currentView === 'category' && activeCategory === c.id ? 'rgba(99, 102, 241, 0.04)' : 'transparent', color: VISUAL_THEME.text, fontSize: '13px', cursor: 'pointer', textAlign: 'left' }}>
+              <span>{c.icon}</span><span>{c.name}</span>
+            </button>
+          );
+        })}
 
         <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: `1px solid ${VISUAL_THEME.border}` }}>
           <button onClick={() => onViewChange('manage_categories', null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', width: '100%', border: 'none', background: currentView === 'manage_categories' ? '#F4F4F5' : 'transparent', fontSize: '13px', color: VISUAL_THEME.textSec, cursor: 'pointer', textAlign: 'left', borderRadius: '8px' }}>📂 Manage Categories</button>
