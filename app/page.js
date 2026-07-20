@@ -25,25 +25,22 @@ export default function ModernTaskPlannerOS() {
   const [activeClient, setActiveClient] = useState(null);
   const [dashboardFilter, setDashboardFilter] = useState('all');
   
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [inspectedTask, setInspectedTask] = useState(null);
-  
-  // Categories management workflow properties
   const [customCategories, setCustomCategories] = useState(CATEGORIES);
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCatName, setNewCatName] = useState('');
+  
+  const [clientsList, setClientsList] = useState(CLIENTS);
+  const [newClientName, setNewClientName] = useState('');
+  const [editingClient, setEditingClient] = useState(null);
 
-  // AI Planner Engine Var
   const [aiPlanOutput, setAiPlanOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Re-Engineered Input Fields Configuration Hooks
+  // Form states
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
   const [modalCat, setModalCat] = useState('personal');
-  const [modalSub, setModalSub] = useState('abc'); // Default dynamic client mapping select options
+  const [modalSub, setModalSub] = useState('none'); 
   const [modalPriority, setModalPriority] = useState('medium');
   const [modalDate, setModalDate] = useState(todayStr());
   const [modalHour, setModalHour] = useState('02');
@@ -61,13 +58,6 @@ export default function ModernTaskPlannerOS() {
   } = useTasks(session, dummyToast);
 
   useEffect(() => {
-    const handleResize = () => { setIsMobile(window.innerWidth < 1024); };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
     authService.getSession().then((s) => { setSession(s); setAuthLoading(false); });
     const sub = authService.onAuthStateChange((s) => setSession(s));
     return () => sub.unsubscribe();
@@ -77,22 +67,28 @@ export default function ModernTaskPlannerOS() {
     if (session) { loadTasks(); }
   }, [session, loadTasks]);
 
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Connecting secure frameworks sync...</div>;
+  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Syncing data grids...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 
   const handleCreateTaskSubmit = async () => {
     if (!modalTitle.trim()) return;
     const constructedTime = `${modalHour}:${modalMin} ${modalPeriod}`;
-    const selectedClientObj = CLIENTS.find(c => c.id === modalSub);
-    const clientLabel = selectedClientObj ? selectedClientObj.name : 'General';
+    let subValue = 'General';
+    
+    if (modalCat === 'clients' && modalSub !== 'none') {
+      const selectedClientObj = clientsList.find(c => c.id === modalSub);
+      subValue = selectedClientObj ? selectedClientObj.name : 'General';
+    } else if (modalSub !== 'none') {
+      subValue = modalSub;
+    }
 
     const formObj = {
       title: modalTitle,
       description: modalDesc ? modalDesc + ` (Time Marker: ${constructedTime})` : `Time Set: ${constructedTime}`,
       category: modalCat,
-      subcategory: clientLabel,
+      subcategory: subValue,
       priority: modalPriority,
-      type: modalFrequency, // Dynamic frequency options connected directly
+      type: modalFrequency,
       deadline: modalDate
     };
 
@@ -100,7 +96,7 @@ export default function ModernTaskPlannerOS() {
       await taskService.createTask(formObj, session.user.id);
       await loadTasks();
       setShowCreateModal(false);
-      setModalTitle(''); setModalDesc('');
+      setModalTitle(''); setModalDesc(''); setModalSub('none');
     } catch (err) {
       console.error(err);
     }
@@ -118,17 +114,16 @@ export default function ModernTaskPlannerOS() {
     setNewCatName('');
   };
 
-  const triggerAiPlanCall = async () => {
-    setAiLoading(true);
-    try {
-      const logSum = tasks.map(t => `- ${t.title} [${t.priority}]`).join('\n');
-      const res = await taskService.fetchAiPlan(logSum);
-      setAiPlanOutput(res);
-    } catch(e) {
-      setAiPlanOutput('AI engine execution failure fallback constraints triggers.');
-    } finally {
-      setAiLoading(false);
+  const executeClientOperation = () => {
+    if(!newClientName.trim()) return;
+    if(editingClient) {
+      setClientsList(prev => prev.map(c => c.id === editingClient ? { ...c, name: newClientName } : c));
+      setEditingClient(null);
+    } else {
+      const uniqueId = 'client_' + Date.now();
+      setClientsList(prev => [...prev, { id: uniqueId, name: newClientName }]);
     }
+    setNewClientName('');
   };
 
   const countToday = tasks.filter(t => t.deadline === todayStr()).length;
@@ -137,13 +132,24 @@ export default function ModernTaskPlannerOS() {
 
   const getFilteredTasksList = () => {
     let dataset = [...tasks];
-    if (currentView === 'today') dataset = dataset.filter(t => t.deadline === todayStr());
-    if (currentView === 'upcoming') dataset = dataset.filter(t => t.deadline > todayStr());
-    if (currentView === 'category' && activeCategory) dataset = dataset.filter(t => t.category === activeCategory);
-    if (currentView === 'client_workspace' && activeClient) {
-      const clientName = CLIENTS.find(c => c.id === activeClient)?.name.toLowerCase() || '';
+    
+    if (currentView === 'today') {
+      dataset = dataset.filter(t => t.deadline === todayStr());
+    } else if (currentView === 'upcoming') {
+      dataset = dataset.filter(t => t.deadline > todayStr());
+    } else if (currentView === 'category' && activeCategory) {
+      if (activeCategory === 'clients') {
+        const allClientNames = clientsList.map(c => c.name.toLowerCase());
+        dataset = dataset.filter(t => t.category === 'clients' || allClientNames.some(name => t.subcategory.toLowerCase().includes(name)));
+      } else {
+        dataset = dataset.filter(t => t.category === activeCategory);
+      }
+    } else if (currentView === 'client_workspace' && activeClient) {
+      const targetClientObj = clientsList.find(c => c.id === activeClient);
+      const clientName = targetClientObj ? targetClientObj.name.toLowerCase() : '';
       dataset = dataset.filter(t => t.subcategory.toLowerCase().includes(clientName));
     }
+
     if (dashboardFilter === 'today') dataset = dataset.filter(t => t.deadline === todayStr());
     if (dashboardFilter === 'pending') dataset = dataset.filter(t => t.status === 'pending');
     if (dashboardFilter === 'completed') dataset = dataset.filter(t => t.status === 'done');
@@ -153,25 +159,20 @@ export default function ModernTaskPlannerOS() {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', background: VISUAL_THEME.bg, overflow: 'hidden', position: 'relative' }}>
       
-      {(!isMobile || mobileSidebarOpen) && (
-        <div style={{ width: '280px', height: '100%', flexShrink: 0, position: isMobile ? 'fixed' : 'relative', zIndex: 9999 }}>
-          <Sidebar currentView={currentView} onViewChange={(v, c, cl) => { setCurrentView(v); setActiveCategory(c); setActiveClient(cl); setDashboardFilter('all'); setMobileSidebarOpen(false); }} activeCategory={activeCategory} activeClient={activeClient} userName={session.user.email} onLogout={() => authService.signOut().then(() => setSession(null))} />
-        </div>
-      )}
+      <div style={{ width: '280px', height: '100%', flexShrink: 0 }}>
+        <Sidebar currentView={currentView} onViewChange={(v, c, cl) => { setCurrentView(v); setActiveCategory(c); setActiveClient(cl); setDashboardFilter('all'); }} activeCategory={activeCategory} activeClient={activeClient} userName={session.user.email} onLogout={() => authService.signOut().then(() => setSession(null))} />
+      </div>
 
       <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px' }}>☰</button>}
-            <h1 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize', margin: 0 }}>{currentView.replace('_', ' ')} Panel</h1>
-          </div>
+          <h1 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize', margin: 0 }}>{currentView.replace('_', ' ')} View</h1>
           <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
           
           {['today', 'upcoming', 'category', 'client_workspace'].includes(currentView) && (
-            <ViewToday tasks={tasks} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} />
+            <ViewToday tasks={tasks} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} formatIndianDate={formatIndianDate} userName={session.user.email} />
           )}
 
           {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={setInspectedTask} />}
@@ -180,45 +181,59 @@ export default function ModernTaskPlannerOS() {
           {currentView === 'notifications' && <ViewNotifications setInspectedTask={setInspectedTask} />}
           
           {currentView === 'manage_categories' && (
-            <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px', boxSizing: 'border-box' }}>
-              <h3 style={{ margin: 0 }}>Workspaces Category Management Settings Hub</h3>
-              <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
-                <input type="text" placeholder={editingCategory ? "Update context name" : "Insert new category tag"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
-                <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingCategory ? 'Update' : 'Add Node'}</button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
-                {customCategories.map(c => (
-                  <div key={c.id} style={{ padding: '14px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500 }}>{c.icon} &nbsp; {c.name}</span>
-                    <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: VISUAL_THEME.accent, cursor: 'pointer' }}>
-                      <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); }}>✏️</span>
-                      <span onClick={() => setCustomCategories(prev => prev.filter(item => item.id !== c.id))} style={{ color: '#EF4444' }}>🗑️</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', boxSizing: 'border-box' }}>
+              
+              {/* Category Management Block */}
+              <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h3 style={{ margin: 0 }}>Categories Hub</h3>
+                <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
+                  <input type="text" placeholder={editingCategory ? "Update category name" : "Insert new category"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
+                  <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingCategory ? 'Update' : 'Add Node'}</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                  {customCategories.map(c => (
+                    <div key={c.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{c.icon} {c.name}</span>
+                      <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                        <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); }}>✏️</span>
+                        <span onClick={() => setCustomCategories(prev => prev.filter(item => item.id !== c.id))} style={{ color: '#EF4444' }}>🗑️</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
 
-          {currentView === 'ai_planner' && (
-            <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', textAlign: 'center' }}>
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>AI Schedule Core Engine Calibration</h3>
-              <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 24px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-                {aiLoading ? 'Calibrating Vector Nodes Matrix...' : '🤖 Run AI Generation'}
-              </button>
-              {aiPlanOutput && <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, textAlign: 'left', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{aiPlanOutput}</div>}
+              {/* Client Sub-categories Management Block */}
+              <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h3 style={{ margin: 0 }}>Client List Hub (Sub-categories of Clients)</h3>
+                <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
+                  <input type="text" placeholder={editingClient ? "Update client name" : "Insert new corporate client"} value={newClientName} onChange={e => setNewClientName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
+                  <button onClick={executeClientOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingClient ? 'Update' : 'Add Client'}</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                  {clientsList.map(cl => (
+                    <div key={cl.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>🏢 {cl.name}</span>
+                      <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                        <span onClick={() => { setEditingClient(cl.id); setNewClientName(cl.name); }}>✏️</span>
+                        <span onClick={() => setClientsList(prev => prev.filter(item => item.id !== cl.id))} style={{ color: '#EF4444' }}>🗑️</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
           )}
 
         </div>
       </div>
 
-      {/* DETAILED ACTION METADATA PANEL SHEET */}
+      {/* INSPECTION OVERLAY PANEL */}
       {inspectedTask && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setInspectedTask(null)} />
-          <div style={{ width: isMobile ? '100vw' : '420px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' }}>
+          <div style={{ width: '420px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '16px' }}>
               <span style={{ fontSize: '13px', fontWeight: 700, color: VISUAL_THEME.accent }}>Modify Operation Parameters Sheet</span>
               <button onClick={() => setInspectedTask(null)} style={{ border: 'none', background: 'transparent', fontSize: '16px', cursor: 'pointer' }}>✕</button>
@@ -226,7 +241,6 @@ export default function ModernTaskPlannerOS() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <label style={{ fontSize: '12px', fontWeight: 600 }}>Update Title</label>
               <input type="text" value={inspectedTask.title} onChange={e => setInspectedTask({ ...inspectedTask, title: e.target.value })} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC' }} />
-              
               <label style={{ fontSize: '12px', fontWeight: 600 }}>Update Description Details</label>
               <textarea value={inspectedTask.description || ''} onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '80px', resize: 'none' }} />
             </div>
@@ -235,20 +249,16 @@ export default function ModernTaskPlannerOS() {
                 await taskService.updateTask(inspectedTask.id, inspectedTask);
                 await loadTasks();
                 setInspectedTask(null);
-              }} style={{ flex: 1, padding: '14px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Save Changes Node</button>
-              <button onClick={async () => {
-                await handleDeleteTask(inspectedTask.id);
-                setInspectedTask(null);
-              }} style={{ padding: '14px', background: '#FEE2E2', color: '#EF4444', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>🗑️ Delete</button>
+              }} style={{ flex: 1, padding: '14px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* FULLY SYNCHRONIZED INTERACTIVE TASK MODAL POPUP */}
+      {/* CREATE TASK MODAL */}
       {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', padding: isMobile ? '0' : '24px', boxSizing: 'border-box' }} onClick={(e) => { if(e.target === e.currentTarget) setShowCreateModal(false); }}>
-          <div style={{ background: '#FFFFFF', borderRadius: isMobile ? '24px 24px 0 0' : '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', boxSizing: 'border-box' }}>
+          <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Create Task</h2><button onClick={() => setShowCreateModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer' }}>✕</button></div>
             
             <input type="text" placeholder="Task Title *" value={modalTitle} onChange={e => setModalTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
@@ -256,16 +266,16 @@ export default function ModernTaskPlannerOS() {
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Category Context</label>
-                <select value={modalCat} onChange={e => setModalCat(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Categories</label>
+                <select value={modalCat} onChange={e => { setModalCat(e.target.value); if(e.target.value !== 'clients') setModalSub('none'); }} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>
                   {customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Assign Client</label>
-                <select value={modalSub} onChange={e => setModalSub(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
+                <select value={modalSub} onChange={e => setModalSub(e.target.value)} disabled={modalCat !== 'clients'} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: modalCat === 'clients' ? '#F8FAFC' : '#E2E8F0', width: '100%', boxSizing: 'border-box', cursor: modalCat === 'clients' ? 'pointer' : 'not-allowed' }}>
                   <option value="none">General / No Client</option>
-                  {CLIENTS.map(cl => <option key={cl.id} value={cl.id}>🏢 {cl.name}</option>)}
+                  {clientsList.map(cl => <option key={cl.id} value={cl.id}>🏢 {cl.name}</option>)}
                 </select>
               </div>
             </div>
@@ -273,7 +283,7 @@ export default function ModernTaskPlannerOS() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Interval Frequency</label>
-                <select value={modalFrequency} onChange={e => setModalFrequency(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}>
+                <select value={modalFrequency} onChange={e => setModalFrequency(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>
                   <option value="one-time">One-Time Task</option>
                   <option value="daily">Daily (Recurring)</option>
                   <option value="weekly">Weekly Routine</option>
