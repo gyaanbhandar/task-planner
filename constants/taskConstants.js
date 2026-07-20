@@ -5,19 +5,18 @@ export const CATEGORIES = [
   { id: 'work', name: 'Work', icon: '💼', color: '#10B981', bg: 'rgba(16, 185, 129, 0.08)' },
   { id: 'professional', name: 'Professional', icon: '🏢', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.08)' },
   { id: 'leadgen', name: 'Lead Gen', icon: '🎯', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.08)' },
+  { id: 'clients', name: 'Clients', icon: '👥', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.08)' },
   { id: 'health', name: 'Health', icon: '❤️', color: '#EC4899', bg: 'rgba(236, 72, 153, 0.08)' },
   { id: 'learning', name: 'Learning', icon: '📚', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.08)' },
-  { id: 'finance', name: 'Finance', icon: '💳', color: '#14B8A6', bg: 'rgba(20, 184, 166, 0.08)' },
-  { id: 'family', name: 'Family', icon: '🏠', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.08)' },
-  { id: 'travel', name: 'Travel', icon: '✈️', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.08)' }
+  { id: 'finance', name: 'Finance', icon: '💳', color: '#14B8A6', bg: 'rgba(20, 184, 166, 0.08)' }
 ];
 
 export const CLIENTS = [
-  { id: 'abc', name: 'ABC Client', metrics: { total: 4, completed: 2 } },
-  { id: 'yun', name: 'YUN Client', metrics: { total: 3, completed: 1 } },
-  { id: 'horizon', name: 'Horizon Solutions', metrics: { total: 5, completed: 3 } },
-  { id: 'network', name: 'Network Scaffol', metrics: { total: 2, completed: 1 } },
-  { id: 'telcos', name: 'Telcos Guru', metrics: { total: 3, completed: 2 } }
+  { id: 'abc', name: 'ABC Client' },
+  { id: 'yun', name: 'YUN Client' },
+  { id: 'horizon', name: 'Horizon Solutions' },
+  { id: 'network', name: 'Network Scaffol' },
+  { id: 'telcos', name: 'Telcos Guru' }
 ];
 
 export const PRIORITY_CONFIG = {
