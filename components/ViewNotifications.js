@@ -1,125 +1,127 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { VISUAL_THEME } from '../constants/taskConstants';
-import { notificationService } from '../services/notificationService';
 
-export default function ViewNotifications({ setInspectedTask }) {
-  const [permission, setPermission] = useState('default');
-  const [isEnabled, setIsEnabled] = useState(true);
+import { useState, useEffect } from 'react';
 
+export default function ViewNotifications() {
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [statusText, setStatusText] = useState('Disabled ❌');
+
+  // Load initial notification status
   useEffect(() => {
-    if (notificationService.hasSupport()) {
-      setPermission(notificationService.getPermission());
-    }
-    const savedToggle = localStorage.getItem('app_notifications_enabled');
-    if (savedToggle !== null) {
-      setIsEnabled(savedToggle === 'true');
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        const savedSetting = localStorage.getItem('notifications_enabled');
+        const active = savedSetting !== 'false';
+        setIsEnabled(active);
+        setStatusText(active ? 'Enabled ✅' : 'Disabled ❌');
+      } else {
+        setIsEnabled(false);
+        setStatusText('Disabled ❌');
+      }
     }
   }, []);
 
-  const playNotificationSound = () => {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+  // Handle Toggle Click (Required user action for Mobile Chrome & Safari)
+  const handleToggle = async () => {
+    if (typeof window === 'undefined') return;
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+    // 1. Browser Support Check
+    if (!('Notification' in window)) {
+      alert("Aapka browser notifications support nahi karta. Please Chrome ya Browser update karein.");
+      return;
+    }
 
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.5);
-    } catch (e) {}
-  };
-
-  const handleToggleState = async () => {
+    // 2. Turning ON
     if (!isEnabled) {
-      const perm = await notificationService.requestPermission();
-      setPermission(perm);
-      if (perm === 'granted') {
-        setIsEnabled(true);
-        localStorage.setItem('app_notifications_enabled', 'true');
-        playNotificationSound();
-        notificationService.send('Notifications Active! 🔔', 'Desktop Alerts & Sound enabled hain.');
+      try {
+        let currentPermission = Notification.permission;
+
+        // Request Permission if not already granted
+        if (currentPermission !== 'granted') {
+          currentPermission = await Notification.requestPermission();
+        }
+
+        if (currentPermission === 'granted') {
+          setIsEnabled(true);
+          setStatusText('Enabled ✅');
+          localStorage.setItem('notifications_enabled', 'true');
+
+          // Send Test Notification
+          try {
+            new Notification("Task Planner", {
+              body: "Notifications active ho gaye hain! Fast alerts ready hain.",
+            });
+          } catch (e) {
+            console.log("Test notification error:", e);
+          }
+        } else {
+          setIsEnabled(false);
+          setStatusText('Disabled ❌');
+          localStorage.setItem('notifications_enabled', 'false');
+          alert(
+            "Notification Permission Denied!\n\nMobile browser permissions block ho gayi hain. Isko fix karne ke liye:\n1. Browser ke 3 dots (Menu) par click karein.\n2. Settings > Site Settings > Notifications mein jaakar Permission 'Allow' karein."
+          );
+        }
+      } catch (error) {
+        console.error("Notification permission error:", error);
+        alert("Error enabling notification: " + error.message);
       }
     } else {
+      // 3. Turning OFF
       setIsEnabled(false);
-      localStorage.setItem('app_notifications_enabled', 'false');
+      setStatusText('Disabled ❌');
+      localStorage.setItem('notifications_enabled', 'false');
     }
   };
 
-  const handleTestNotification = () => {
-    if (!isEnabled) return;
-    playNotificationSound();
-    notificationService.send('Task Planner Test ⏰', 'Notification and sound test working perfectly!');
-  };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', boxSizing: 'border-box' }}>
-      
-      {/* Permission & Toggle Switch Card */}
-      <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+    <div className="space-y-6 max-w-3xl mx-auto p-2 sm:p-0">
+      {/* Main Settings Box */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
         <div>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 6px 0', color: VISUAL_THEME.text }}>
+          <h2 className="text-base sm:text-lg font-bold text-gray-900">
             Desktop Notification & Sound Alerts
-          </h3>
-          <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>
-            Status: <strong style={{ color: isEnabled && permission === 'granted' ? '#10B981' : '#EF4444' }}>
-              {isEnabled && permission === 'granted' ? 'Active ✓' : 'Disabled ✕'}
-            </strong>
+          </h2>
+          <p className="text-sm font-medium mt-1">
+            Status: <span className={isEnabled ? "text-green-600" : "text-red-500"}>{statusText}</span>
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          {/* ON / OFF Toggle Switch */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: VISUAL_THEME.textSec }}>
-              {isEnabled ? 'ON' : 'OFF'}
-            </span>
-            <button
-              onClick={handleToggleState}
-              style={{
-                width: '48px',
-                height: '26px',
-                borderRadius: '13px',
-                background: isEnabled ? VISUAL_THEME.accent : '#CBD5E1',
-                border: 'none',
-                padding: '3px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: isEnabled ? 'flex-end' : 'flex-start',
-                transition: 'all 0.2s'
-              }}
-            >
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#FFFFFF', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
-            </button>
-          </div>
-
-          {isEnabled && permission === 'granted' && (
-            <button onClick={handleTestNotification} style={{ padding: '8px 14px', background: '#ECFDF5', color: '#059669', border: '1px solid #10B981', borderRadius: '8px', fontWeight: 600, fontSize: '12px', cursor: 'pointer' }}>
-              🔊 Test Sound & Alert
-            </button>
-          )}
+        {/* Toggle Switch & Status */}
+        <div className="flex items-center gap-3 pt-2">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            {isEnabled ? 'ON' : 'OFF'}
+          </span>
+          <button
+            type="button"
+            onClick={handleToggle}
+            className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              isEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+            }`}
+            role="switch"
+            aria-checked={isEnabled}
+          >
+            <span
+              className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                isEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
 
-      <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '20px' }}>
-        <h4 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 12px 0' }}>Kaise Kaam Karega?</h4>
-        <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: VISUAL_THEME.textSec, lineHeight: 1.8 }}>
-          <li>Aapke tasks mein aap jo exact time (jaise 02:30 PM) set karoge, wahi time par desktop popup sound ke sath trigger hoga.</li>
-          <li>Jab aap ise **OFF** kar doge, toh koi pop-up ya sound nahi aayega.</li>
+      {/* Guide Box */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+        <h3 className="text-base font-semibold text-gray-900">Kaise Kaam Karega?</h3>
+        <ul className="list-disc list-inside text-sm text-gray-600 space-y-2 leading-relaxed">
+          <li>
+            Aapke tasks mein aap jo exact time (jaise <span className="font-semibold text-gray-800">02:30 PM</span>) set karoge, wahi time par desktop popup sound ke sath trigger hoga.
+          </li>
+          <li>
+            Jab aap ise <span className="font-bold text-gray-800">OFF</span> kar doge, toh koi pop-up ya sound nahi aayega.
+          </li>
         </ul>
       </div>
-
     </div>
   );
 }
