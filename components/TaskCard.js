@@ -5,10 +5,19 @@ import { VISUAL_THEME, PRIORITY_CONFIG } from '../constants/taskConstants';
 export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isMobile }) {
   const priorityStyle = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
   
-  // Clean Time Display Logic (Extracts time property or parses cleanly)
-  const displayTime = task.time || (task.description && task.description.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i)?.[0]) || '';
+  // Format or extract clean 12-hour AM/PM time
+  const getFormattedTime = () => {
+    if (task.time) return task.time;
+    if (task.description) {
+      const match = task.description.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i);
+      if (match) return match[0];
+    }
+    return '09:00 AM'; // Default AM fallback
+  };
+
+  const displayTime = getFormattedTime();
   
-  // Clean Description (Strips out raw 'Time: 12:00 AM' markers from note body)
+  // Clean Description text
   const cleanDesc = (task.description || '')
     .replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '')
     .trim();
@@ -66,7 +75,7 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
         {displayTime && (
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', background: '#F8FAFC', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${VISUAL_THEME.border}` }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: VISUAL_THEME.accent, background: '#EEF2FF', padding: '4px 10px', borderRadius: '6px', border: `1px solid rgba(99,102,241,0.2)` }}>
             🕒 {displayTime}
           </span>
         )}
