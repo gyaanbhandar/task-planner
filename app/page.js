@@ -17,7 +17,7 @@ import ViewAllTasks from '../components/ViewAllTasks';
 import ViewRecurring from '../components/ViewRecurring';
 import ViewNotifications from '../components/ViewNotifications';
 
-// Helper: Convert 12h "02:30 PM" to 24h "14:30" for <input type="time">
+// Helper: Convert 12h "02:30 PM" to 24h "14:30" for HTML <input type="time">
 const convert12to24 = (time12) => {
   if (!time12) return '09:00';
   const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
@@ -80,7 +80,7 @@ export default function ModernTaskPlannerOS() {
   const [modalSub, setModalSub] = useState('none'); 
   const [modalPriority, setModalPriority] = useState('medium');
   const [modalDate, setModalDate] = useState(todayStr());
-  const [modalTime, setModalTime] = useState('09:00'); // 24-hour native time picker state
+  const [modalTime, setModalTime] = useState('09:00'); // 24h internal state for native clock picker
   const [modalFrequency, setModalFrequency] = useState('one-time');
 
   const notifiedTasksRef = useRef(new Set());
@@ -217,7 +217,7 @@ export default function ModernTaskPlannerOS() {
     const formObj = {
       title: modalTitle,
       description: modalDesc.trim(),
-      time: formatted12hTime,
+      time: formatted12hTime, // Saved explicitly as "02:30 PM"
       category: modalCat,
       subcategory: subValue,
       priority: modalPriority,
@@ -485,9 +485,9 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
-              {/* NATIVE DATE & TIME PICKERS */}
+              {/* DATE & TIME (NATIVE TIME PICKER WITH AM/PM IN BROWSER) */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Target Date & Time</label>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Target Date & Time (12h AM/PM)</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
                   <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
@@ -500,7 +500,7 @@ export default function ModernTaskPlannerOS() {
                 const formattedTime = convert24to12(editTime);
                 const updatedObj = {
                   ...inspectedTask,
-                  time: formattedTime
+                  time: formattedTime // Explicit 12h AM/PM string saved
                 };
                 await taskService.updateTask(inspectedTask.id, updatedObj);
                 await loadTasks();
@@ -560,7 +560,7 @@ export default function ModernTaskPlannerOS() {
               </div>
             </div>
 
-            {/* NATIVE DATE & TIME INPUTS */}
+            {/* DATE & TIME (NATIVE TIME PICKER WITH AM/PM IN BROWSER) */}
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Milestone Target Reminder</label>
               <div style={{ display: 'flex', gap: '8px' }}>
