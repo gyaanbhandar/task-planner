@@ -8,7 +8,6 @@ import AuthScreen from '../components/AuthScreen';
 import { authService } from '../services/authService';
 import { taskService } from '../services/taskService';
 import { useTasks } from '../hooks/useTasks';
-import { supabase } from '../lib/supabase';
 
 // Import View Components
 import ViewToday from '../components/ViewToday';
@@ -42,7 +41,7 @@ export default function ModernTaskPlannerOS() {
   const [newClientName, setNewClientName] = useState('');
   const [editingClient, setEditingClient] = useState(null);
 
-  // Claude AI Engine State Logs
+  // AI Engine State
   const [aiPlanOutput, setAiPlanOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -67,7 +66,6 @@ export default function ModernTaskPlannerOS() {
     handleDeleteTask
   } = useTasks(session, dummyToast);
 
-  // Window Resize Monitor Loop
   useEffect(() => {
     const handleResize = () => { setIsMobile(window.innerWidth < 1024); };
     handleResize();
@@ -85,8 +83,29 @@ export default function ModernTaskPlannerOS() {
     if (session) { loadTasks(); }
   }, [session, loadTasks]);
 
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Syncing workspace environment grids...</div>;
+  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading Task Planner...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
+
+  // Header Title Generator based on Selected View
+  const getViewTitle = () => {
+    if (currentView === 'today') return "Today's Tasks";
+    if (currentView === 'upcoming') return "Upcoming Tasks";
+    if (currentView === 'calendar') return "Calendar View";
+    if (currentView === 'all_tasks') return "All Tasks";
+    if (currentView === 'ai_planner') return "AI Planner";
+    if (currentView === 'recurring') return "Recurring Tasks";
+    if (currentView === 'manage_categories') return "Manage Categories";
+    if (currentView === 'notifications') return "Notifications Center";
+    if (currentView === 'category' && activeCategory) {
+      const catObj = customCategories.find(c => c.id === activeCategory);
+      return catObj ? catObj.name : "Category";
+    }
+    if (currentView === 'client_workspace' && activeClient) {
+      const clientObj = clientsList.find(c => c.id === activeClient);
+      return clientObj ? clientObj.name : "Client Workspace";
+    }
+    return "Task Planner";
+  };
 
   const handleCreateTaskSubmit = async () => {
     if (!modalTitle.trim()) return;
@@ -102,7 +121,7 @@ export default function ModernTaskPlannerOS() {
 
     const formObj = {
       title: modalTitle,
-      description: modalDesc ? modalDesc + ` (Time Marker: ${constructedTime})` : `Time Set: ${constructedTime}`,
+      description: modalDesc ? modalDesc + ` (Time: ${constructedTime})` : `Time: ${constructedTime}`,
       category: modalCat,
       subcategory: subValue,
       priority: modalPriority,
@@ -151,19 +170,15 @@ export default function ModernTaskPlannerOS() {
       const res = await taskService.fetchAiPlan(summaryText);
       setAiPlanOutput(res);
     } catch(e) {
-      setAiPlanOutput('AI planner execution completed with standard preset layout restrictions.');
-    } finally { // FIXED: Corrected spelling from 'finaly' to 'finally'
+      setAiPlanOutput('AI planner execution completed.');
+    } finally {
       setAiLoading(false);
     }
   };
 
-  const countToday = tasks.filter(t => t.deadline === todayStr()).length;
-  const countPending = tasks.filter(t => t.status === 'pending').length;
-  const countCompleted = tasks.filter(t => t.status === 'done').length;
-
-  const getFilteredTasksList = () => {
+  // Base view task list (relative to current sidebar selection)
+  const getBaseViewTasks = () => {
     let dataset = [...tasks];
-    
     if (currentView === 'today') {
       dataset = dataset.filter(t => t.deadline === todayStr());
     } else if (currentView === 'upcoming') {
@@ -180,48 +195,80 @@ export default function ModernTaskPlannerOS() {
       const clientName = targetClientObj ? targetClientObj.name.toLowerCase() : '';
       dataset = dataset.filter(t => t.subcategory.toLowerCase().includes(clientName));
     }
-
-    if (dashboardFilter === 'today') dataset = dataset.filter(t => t.deadline === todayStr());
-    if (dashboardFilter === 'pending') dataset = dataset.filter(t => t.status === 'pending');
-    if (dashboardFilter === 'completed') dataset = dataset.filter(t => t.status === 'done');
     return dataset;
   };
+
+  const baseViewTasks = getBaseViewTasks();
+
+  // Counts calculated RELATIVE to active view context!
+  const countAll = baseViewTasks.length;
+  const countToday = baseViewTasks.filter(t => t.deadline === todayStr()).length;
+  const countPending = baseViewTasks.filter(t => t.status === 'pending').length;
+  const countCompleted = baseViewTasks.filter(t => t.status === 'done').length;
+
+  // Filter tasks further when user clicks top cards
+  const getFilteredTasksList = () => {
+    let dataset = [...baseViewTasks];
+    if (dashboardFilter === 'today') {
+      dataset = dataset.filter(t => t.deadline === todayStr());
+    } else if (dashboardFilter === 'pending') {
+      dataset = dataset.filter(t => t.status === 'pending');
+    } else if (dashboardFilter === 'completed') {
+      dataset = dataset.filter(t => t.status === 'done');
+    }
+    return dataset;
+  };
+
+  const activeViewTitle = getViewTitle();
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', background: VISUAL_THEME.bg, overflow: 'hidden', position: 'relative' }}>
       
-      {/* Sidebar Navigation Context Node */}
       {(!isMobile || mobileSidebarOpen) && (
         <div style={{ width: '280px', height: '100%', flexShrink: 0, position: isMobile ? 'fixed' : 'relative', zIndex: 9999 }}>
           <Sidebar currentView={currentView} onViewChange={(v, c, cl) => { setCurrentView(v); setActiveCategory(c); setActiveClient(cl); setDashboardFilter('all'); setMobileSidebarOpen(false); }} activeCategory={activeCategory} activeClient={activeClient} userName={session.user.email} onLogout={() => authService.signOut().then(() => setSession(null))} />
         </div>
       )}
 
-      {/* Main Panel View Canvas */}
       <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        
+        {/* Dynamic Clean Header Title */}
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
-            <h1 style={{ fontSize: '18px', fontWeight: 700, textTransform: 'capitalize', margin: 0 }}>{currentView.replace('_', ' ')} View</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
           </div>
-          <button onClick={() => { setInspectedTask(null); setModalTitle(''); setModalDesc(''); setModalDate(todayStr()); setShowCreateModal(true); }} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
+          <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
           
-          {['today', 'upcoming', 'category', 'client_workspace'].includes(currentView) && (
-            <ViewToday tasks={tasks} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} />
+          {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
+            <ViewToday
+              tasks={tasks}
+              countAll={countAll}
+              countToday={countToday}
+              countPending={countPending}
+              countCompleted={countCompleted}
+              dashboardFilter={dashboardFilter}
+              setDashboardFilter={setDashboardFilter}
+              viewableTasksList={getFilteredTasksList()}
+              handleToggleStatus={handleToggleStatus}
+              setInspectedTask={setInspectedTask}
+              handleDeleteTask={handleDeleteTask}
+              isMobile={isMobile}
+              formatIndianDate={formatIndianDate}
+              userName={session.user.email}
+              viewTitle={activeViewTitle}
+            />
           )}
 
           {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={setInspectedTask} />}
-          {currentView === 'all_tasks' && <ViewAllTasks tasks={tasks} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} />}
           {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} />}
           {currentView === 'notifications' && <ViewNotifications setInspectedTask={setInspectedTask} />}
           
           {currentView === 'manage_categories' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', boxSizing: 'border-box' }}>
-              
-              {/* Category Management */}
               <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <h3 style={{ margin: 0 }}>Categories Hub</h3>
                 <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
@@ -241,7 +288,6 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
-              {/* Client Management */}
               <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <h3 style={{ margin: 0 }}>Client List Hub (Sub-categories of Clients)</h3>
                 <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
@@ -260,7 +306,6 @@ export default function ModernTaskPlannerOS() {
                   ))}
                 </div>
               </div>
-
             </div>
           )}
 
@@ -269,7 +314,7 @@ export default function ModernTaskPlannerOS() {
               <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
               <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>AI Schedule Core Engine Calibration</h3>
               <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 24px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-                {aiLoading ? 'Calibrating Vector Nodes Matrix...' : '🤖 Run AI Generation'}
+                {aiLoading ? 'Calibrating...' : '🤖 Run AI Generation'}
               </button>
               {aiPlanOutput && <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, textAlign: 'left', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{aiPlanOutput}</div>}
             </div>
@@ -278,37 +323,85 @@ export default function ModernTaskPlannerOS() {
         </div>
       </div>
 
-      {/* INSPECTION ACTION MODAL OVERLAY */}
+      {/* FULL EDIT TASK DRAWER PANEL */}
       {inspectedTask && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setInspectedTask(null)} />
-          <div style={{ width: isMobile ? '100vw' : '420px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '16px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: VISUAL_THEME.accent }}>Modify Operation Parameters Sheet</span>
-              <button onClick={() => setInspectedTask(null)} style={{ border: 'none', background: 'transparent', fontSize: '16px', cursor: 'pointer' }}>✕</button>
+          <div style={{ width: isMobile ? '100vw' : '440px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)', boxSizing: 'border-box', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${VISUAL_THEME.border}`, paddingBottom: '14px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: VISUAL_THEME.text }}>Edit Task</h3>
+              <button onClick={() => setInspectedTask(null)} style={{ border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer' }}>✕</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 600 }}>Update Title</label>
-              <input type="text" value={inspectedTask.title} onChange={e => setInspectedTask({ ...inspectedTask, title: e.target.value })} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC' }} />
-              <label style={{ fontSize: '12px', fontWeight: 600 }}>Update Description Details</label>
-              <textarea value={inspectedTask.description || ''} onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '80px', resize: 'none' }} />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Task Title</label>
+                <input type="text" value={inspectedTask.title || ''} onChange={e => setInspectedTask({ ...inspectedTask, title: e.target.value })} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Description</label>
+                <textarea value={inspectedTask.description || ''} onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '70px', resize: 'none', fontSize: '13px', boxSizing: 'border-box' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Category</label>
+                  <select value={inspectedTask.category || 'personal'} onChange={e => setInspectedTask({ ...inspectedTask, category: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }}>
+                    {customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Client / Subcategory</label>
+                  <select value={inspectedTask.subcategory || 'General'} onChange={e => setInspectedTask({ ...inspectedTask, subcategory: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }}>
+                    <option value="General">General / None</option>
+                    {clientsList.map(cl => <option key={cl.id} value={cl.name}>🏢 {cl.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Priority</label>
+                  <select value={inspectedTask.priority || 'medium'} onChange={e => setInspectedTask({ ...inspectedTask, priority: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }}>
+                    <option value="low">🔹 Low Priority</option>
+                    <option value="medium">🔸 Medium Priority</option>
+                    <option value="high">🔺 High Priority</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Frequency</label>
+                  <select value={inspectedTask.type || 'one-time'} onChange={e => setInspectedTask({ ...inspectedTask, type: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }}>
+                    <option value="one-time">One-Time Task</option>
+                    <option value="daily">Daily (Recurring)</option>
+                    <option value="weekly">Weekly Routine</option>
+                    <option value="monthly">Monthly Audit</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Milestone Target Date</label>
+                <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
+              </div>
             </div>
-            <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
+
+            <div style={{ marginTop: 'auto', display: 'flex', gap: '10px', paddingTop: '16px', borderTop: `1px solid ${VISUAL_THEME.border}` }}>
               <button onClick={async () => {
                 await taskService.updateTask(inspectedTask.id, inspectedTask);
                 await loadTasks();
                 setInspectedTask(null);
-              }} style={{ flex: 1, padding: '14px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
+              }} style={{ flex: 1, padding: '12px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
               <button onClick={async () => {
                 await handleDeleteTask(inspectedTask.id);
                 setInspectedTask(null);
-              }} style={{ padding: '14px', background: '#FEE2E2', color: '#EF4444', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>🗑️ Delete</button>
+              }} style={{ padding: '12px 18px', background: '#FEE2E2', color: '#EF4444', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>🗑️ Delete</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* CREATE TASK INTERACTIVE MODAL POPUP */}
+      {/* CREATE TASK MODAL */}
       {showCreateModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', boxSizing: 'border-box' }} onClick={(e) => { if(e.target === e.currentTarget) setShowCreateModal(false); }}>
           <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box' }}>
