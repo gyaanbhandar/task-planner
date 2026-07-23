@@ -32,6 +32,11 @@ export default function ModernTaskPlannerOS() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inspectedTask, setInspectedTask] = useState(null);
+
+  // Edit Drawer Time States
+  const [editHour, setEditHour] = useState('09');
+  const [editMin, setEditMin] = useState('00');
+  const [editPeriod, setEditPeriod] = useState('AM');
   
   // Dynamic Workspace Categories & Clients Management States
   const [customCategories, setCustomCategories] = useState(CATEGORIES);
@@ -46,19 +51,18 @@ export default function ModernTaskPlannerOS() {
   const [aiPlanOutput, setAiPlanOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Form Input States
+  // Form Input States (Create Modal)
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
   const [modalCat, setModalCat] = useState('personal');
   const [modalSub, setModalSub] = useState('none'); 
   const [modalPriority, setModalPriority] = useState('medium');
   const [modalDate, setModalDate] = useState(todayStr());
-  const [modalHour, setModalHour] = useState('02');
+  const [modalHour, setModalHour] = useState('09');
   const [modalMin, setModalMin] = useState('00');
-  const [modalPeriod, setModalPeriod] = useState('PM');
+  const [modalPeriod, setModalPeriod] = useState('AM');
   const [modalFrequency, setModalFrequency] = useState('one-time');
 
-  // Track notified tasks to prevent duplicate alerts
   const notifiedTasksRef = useRef(new Set());
 
   const dummyToast = (msg) => console.log(`[Notification]: ${msg}`);
@@ -87,10 +91,22 @@ export default function ModernTaskPlannerOS() {
     if (session) { loadTasks(); }
   }, [session, loadTasks]);
 
-  // Web Audio chime generator
+  // Sync Edit Drawer Time when a task is selected
+  const handleSelectInspectedTask = (task) => {
+    setInspectedTask(task);
+    if (!task) return;
+    const timeStr = task.time || '09:00 AM';
+    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match) {
+      setEditHour(String(match[1]).padStart(2, '0'));
+      setEditMin(match[2]);
+      setEditPeriod(match[3].toUpperCase());
+    }
+  };
+
   const playChimeSound = () => {
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const AudioCtx = window.window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
@@ -111,37 +127,39 @@ export default function ModernTaskPlannerOS() {
     } catch (e) {}
   };
 
-  // Background Clock Loop: Scans tasks every 30 seconds for exact time matches
+  // Clock Loop for Real-time alerts
   useEffect(() => {
     if (!tasks || tasks.length === 0) return;
 
     const interval = setInterval(() => {
+      const isEnabled = localStorage.getItem('app_notifications_enabled') !== 'false';
+      if (!isEnabled) return;
+
       const now = new Date();
       let currentHour = now.getHours();
       const currentMinute = String(now.getMinutes()).padStart(2, '0');
       const period = currentHour >= 12 ? 'PM' : 'AM';
 
       currentHour = currentHour % 12;
-      currentHour = currentHour ? currentHour : 12; // convert 0 to 12
+      currentHour = currentHour ? currentHour : 12;
       const formattedHour = String(currentHour).padStart(2, '0');
       const currentTimeString = `${formattedHour}:${currentMinute} ${period}`;
 
       tasks.forEach(t => {
-        // Check if task is for today, pending, has time, and time matches current minute
+        const taskTime = t.time || '';
         if (
           t.status === 'pending' &&
           (t.deadline === todayStr() || t.type === 'daily') &&
-          t.time &&
-          t.time.toLowerCase() === currentTimeString.toLowerCase()
+          taskTime.toLowerCase() === currentTimeString.toLowerCase()
         ) {
           if (!notifiedTasksRef.current.has(t.id)) {
             notifiedTasksRef.current.add(t.id);
             playChimeSound();
-            notificationService.send(`⏰ Reminder: ${t.title}`, `Scheduled for ${t.time} (${t.subcategory || 'General'})`);
+            notificationService.send(`⏰ Task Reminder: ${t.title}`, `${t.time} • ${t.subcategory || 'General'}`);
           }
         }
       });
-    }, 30000); // Checks every 30 sec
+    }, 20000);
 
     return () => clearInterval(interval);
   }, [tasks]);
@@ -183,7 +201,8 @@ export default function ModernTaskPlannerOS() {
 
     const formObj = {
       title: modalTitle,
-      description: modalDesc ? modalDesc + ` (Time: ${constructedTime})` : `Time: ${constructedTime}`,
+      description: modalDesc.trim(),
+      time: constructedTime,
       category: modalCat,
       subcategory: subValue,
       priority: modalPriority,
@@ -320,7 +339,7 @@ export default function ModernTaskPlannerOS() {
               setDashboardFilter={setDashboardFilter}
               viewableTasksList={getFilteredTasksList()}
               handleToggleStatus={handleToggleStatus}
-              setInspectedTask={setInspectedTask}
+              setInspectedTask={handleSelectInspectedTask}
               handleDeleteTask={handleDeleteTask}
               isMobile={isMobile}
               formatIndianDate={formatIndianDate}
@@ -329,9 +348,9 @@ export default function ModernTaskPlannerOS() {
             />
           )}
 
-          {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={setInspectedTask} />}
-          {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={setInspectedTask} handleDeleteTask={handleDeleteTask} />}
-          {currentView === 'notifications' && <ViewNotifications setInspectedTask={setInspectedTask} />}
+          {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={handleSelectInspectedTask} />}
+          {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} />}
+          {currentView === 'notifications' && <ViewNotifications setInspectedTask={handleSelectInspectedTask} />}
           
           {currentView === 'manage_categories' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', boxSizing: 'border-box' }}>
@@ -339,7 +358,8 @@ export default function ModernTaskPlannerOS() {
                 <h3 style={{ margin: 0 }}>Categories Hub</h3>
                 <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
                   <input type="text" placeholder={editingCategory ? "Update category name" : "Insert new category"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
-                  <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingCategory ? 'Update' : 'Add Node'}</button>
+                  {/* Cleaned Button Label: Add Category */}
+                  <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingCategory ? 'Update' : '+ Add Category'}</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {customCategories.map(c => (
@@ -358,7 +378,7 @@ export default function ModernTaskPlannerOS() {
                 <h3 style={{ margin: 0 }}>Client List Hub (Sub-categories of Clients)</h3>
                 <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
                   <input type="text" placeholder={editingClient ? "Update client name" : "Insert new corporate client"} value={newClientName} onChange={e => setNewClientName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
-                  <button onClick={executeClientOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingClient ? 'Update' : 'Add Client'}</button>
+                  <button onClick={executeClientOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingClient ? 'Update' : '+ Add Client'}</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {clientsList.map(cl => (
@@ -389,7 +409,7 @@ export default function ModernTaskPlannerOS() {
         </div>
       </div>
 
-      {/* FULL EDIT TASK DRAWER PANEL */}
+      {/* EDIT TASK DRAWER PANEL (WITH TIME EDIT CONTROLS) */}
       {inspectedTask && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setInspectedTask(null)} />
@@ -406,8 +426,13 @@ export default function ModernTaskPlannerOS() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Description</label>
-                <textarea value={inspectedTask.description || ''} onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '70px', resize: 'none', fontSize: '13px', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Description Notes</label>
+                <textarea 
+                  placeholder="Add notes..."
+                  value={(inspectedTask.description || '').replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '').trim()} 
+                  onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} 
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '70px', resize: 'none', fontSize: '13px', boxSizing: 'border-box' }} 
+                />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -446,15 +471,33 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
+              {/* DATE & TIME EDIT CONTROLS */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Milestone Target Date</label>
-                <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Target Date & Time</label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
+                  <select value={editHour} onChange={e => setEditHour(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px' }}>
+                    {['01','02','03','04','05','06','07','08','09','10','11','12'].map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <select value={editMin} onChange={e => setEditMin(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px' }}>
+                    {['00','15','30','45'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={editPeriod} onChange={e => setEditPeriod(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFF', fontWeight: 'bold' }}>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </div>
             </div>
 
             <div style={{ marginTop: 'auto', display: 'flex', gap: '10px', paddingTop: '16px', borderTop: `1px solid ${VISUAL_THEME.border}` }}>
               <button onClick={async () => {
-                await taskService.updateTask(inspectedTask.id, inspectedTask);
+                const updatedTime = `${editHour}:${editMin} ${editPeriod}`;
+                const updatedObj = {
+                  ...inspectedTask,
+                  time: updatedTime
+                };
+                await taskService.updateTask(inspectedTask.id, updatedObj);
                 await loadTasks();
                 setInspectedTask(null);
               }} style={{ flex: 1, padding: '12px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
