@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { VISUAL_THEME, CATEGORIES, CLIENTS, PRIORITY_CONFIG } from '../constants/taskConstants';
 import { todayStr, formatIndianDate } from '../utils/dateUtils';
 import Sidebar from '../components/Sidebar';
 import AuthScreen from '../components/AuthScreen';
 import { authService } from '../services/authService';
 import { taskService } from '../services/taskService';
+import { notificationService } from '../services/notificationService';
 import { useTasks } from '../hooks/useTasks';
 
 // Import View Components
@@ -57,6 +58,9 @@ export default function ModernTaskPlannerOS() {
   const [modalPeriod, setModalPeriod] = useState('PM');
   const [modalFrequency, setModalFrequency] = useState('one-time');
 
+  // Track notified tasks to prevent duplicate alerts
+  const notifiedTasksRef = useRef(new Set());
+
   const dummyToast = (msg) => console.log(`[Notification]: ${msg}`);
   const {
     tasks,
@@ -83,10 +87,68 @@ export default function ModernTaskPlannerOS() {
     if (session) { loadTasks(); }
   }, [session, loadTasks]);
 
+  // Web Audio chime generator
+  const playChimeSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {}
+  };
+
+  // Background Clock Loop: Scans tasks every 30 seconds for exact time matches
+  useEffect(() => {
+    if (!tasks || tasks.length === 0) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      let currentHour = now.getHours();
+      const currentMinute = String(now.getMinutes()).padStart(2, '0');
+      const period = currentHour >= 12 ? 'PM' : 'AM';
+
+      currentHour = currentHour % 12;
+      currentHour = currentHour ? currentHour : 12; // convert 0 to 12
+      const formattedHour = String(currentHour).padStart(2, '0');
+      const currentTimeString = `${formattedHour}:${currentMinute} ${period}`;
+
+      tasks.forEach(t => {
+        // Check if task is for today, pending, has time, and time matches current minute
+        if (
+          t.status === 'pending' &&
+          (t.deadline === todayStr() || t.type === 'daily') &&
+          t.time &&
+          t.time.toLowerCase() === currentTimeString.toLowerCase()
+        ) {
+          if (!notifiedTasksRef.current.has(t.id)) {
+            notifiedTasksRef.current.add(t.id);
+            playChimeSound();
+            notificationService.send(`⏰ Reminder: ${t.title}`, `Scheduled for ${t.time} (${t.subcategory || 'General'})`);
+          }
+        }
+      });
+    }, 30000); // Checks every 30 sec
+
+    return () => clearInterval(interval);
+  }, [tasks]);
+
   if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading Task Planner...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 
-  // Header Title Generator based on Selected View
   const getViewTitle = () => {
     if (currentView === 'today') return "Today's Tasks";
     if (currentView === 'upcoming') return "Upcoming Tasks";
@@ -176,19 +238,15 @@ export default function ModernTaskPlannerOS() {
     }
   };
 
-// Base view task list (Including Recurring Tasks Logic Fix)
   const getBaseViewTasks = () => {
     let dataset = [...tasks];
-
     if (currentView === 'today') {
-      // Show today's deadline tasks OR active daily recurring tasks
       dataset = dataset.filter(t => 
         t.deadline === todayStr() || 
         t.type === 'daily' || 
         (t.type === 'weekly' && new Date(t.deadline).getDay() === new Date().getDay())
       );
     } else if (currentView === 'upcoming') {
-      // Show future tasks OR weekly/monthly recurring rules
       dataset = dataset.filter(t => 
         t.deadline > todayStr() || 
         t.type === 'weekly' || 
@@ -208,19 +266,18 @@ export default function ModernTaskPlannerOS() {
     }
     return dataset;
   };
+
   const baseViewTasks = getBaseViewTasks();
 
-  // Counts calculated RELATIVE to active view context!
   const countAll = baseViewTasks.length;
-  const countToday = baseViewTasks.filter(t => t.deadline === todayStr()).length;
+  const countToday = baseViewTasks.filter(t => t.deadline === todayStr() || t.type === 'daily').length;
   const countPending = baseViewTasks.filter(t => t.status === 'pending').length;
   const countCompleted = baseViewTasks.filter(t => t.status === 'done').length;
 
-  // Filter tasks further when user clicks top cards
   const getFilteredTasksList = () => {
     let dataset = [...baseViewTasks];
     if (dashboardFilter === 'today') {
-      dataset = dataset.filter(t => t.deadline === todayStr());
+      dataset = dataset.filter(t => t.deadline === todayStr() || t.type === 'daily');
     } else if (dashboardFilter === 'pending') {
       dataset = dataset.filter(t => t.status === 'pending');
     } else if (dashboardFilter === 'completed') {
@@ -242,7 +299,6 @@ export default function ModernTaskPlannerOS() {
 
       <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         
-        {/* Dynamic Clean Header Title */}
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
