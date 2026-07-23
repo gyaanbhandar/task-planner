@@ -17,6 +17,30 @@ import ViewAllTasks from '../components/ViewAllTasks';
 import ViewRecurring from '../components/ViewRecurring';
 import ViewNotifications from '../components/ViewNotifications';
 
+// Helper: Convert 12h "02:30 PM" to 24h "14:30" for <input type="time">
+const convert12to24 = (time12) => {
+  if (!time12) return '09:00';
+  const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return '09:00';
+  let [_, h, m, p] = match;
+  let hour = parseInt(h, 10);
+  if (p.toUpperCase() === 'PM' && hour < 12) hour += 12;
+  if (p.toUpperCase() === 'AM' && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${m}`;
+};
+
+// Helper: Convert 24h "14:30" to 12h "02:30 PM" for DB & Task Cards
+const convert24to12 = (time24) => {
+  if (!time24) return '09:00 AM';
+  const parts = time24.split(':');
+  let hour = parseInt(parts[0], 10);
+  const min = parts[1] || '00';
+  const period = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  if (hour === 0) hour = 12;
+  return `${String(hour).padStart(2, '0')}:${min} ${period}`;
+};
+
 export default function ModernTaskPlannerOS() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -33,10 +57,8 @@ export default function ModernTaskPlannerOS() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inspectedTask, setInspectedTask] = useState(null);
 
-  // Edit Drawer Time States
-  const [editHour, setEditHour] = useState('09');
-  const [editMin, setEditMin] = useState('00');
-  const [editPeriod, setEditPeriod] = useState('AM');
+  // Time Picker State for Edit Drawer
+  const [editTime, setEditTime] = useState('09:00');
   
   // Dynamic Workspace Categories & Clients Management States
   const [customCategories, setCustomCategories] = useState(CATEGORIES);
@@ -58,9 +80,7 @@ export default function ModernTaskPlannerOS() {
   const [modalSub, setModalSub] = useState('none'); 
   const [modalPriority, setModalPriority] = useState('medium');
   const [modalDate, setModalDate] = useState(todayStr());
-  const [modalHour, setModalHour] = useState('09');
-  const [modalMin, setModalMin] = useState('00');
-  const [modalPeriod, setModalPeriod] = useState('AM');
+  const [modalTime, setModalTime] = useState('09:00'); // 24-hour native time picker state
   const [modalFrequency, setModalFrequency] = useState('one-time');
 
   const notifiedTasksRef = useRef(new Set());
@@ -91,22 +111,17 @@ export default function ModernTaskPlannerOS() {
     if (session) { loadTasks(); }
   }, [session, loadTasks]);
 
-  // Sync Edit Drawer Time when a task is selected
+  // Sync Edit Drawer Time when a task is inspected
   const handleSelectInspectedTask = (task) => {
     setInspectedTask(task);
     if (!task) return;
-    const timeStr = task.time || '09:00 AM';
-    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (match) {
-      setEditHour(String(match[1]).padStart(2, '0'));
-      setEditMin(match[2]);
-      setEditPeriod(match[3].toUpperCase());
-    }
+    const initial24h = convert12to24(task.time || '09:00 AM');
+    setEditTime(initial24h);
   };
 
   const playChimeSound = () => {
     try {
-      const AudioCtx = window.window.AudioContext || window.webkitAudioContext;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
@@ -189,7 +204,7 @@ export default function ModernTaskPlannerOS() {
 
   const handleCreateTaskSubmit = async () => {
     if (!modalTitle.trim()) return;
-    const constructedTime = `${modalHour}:${modalMin} ${modalPeriod}`;
+    const formatted12hTime = convert24to12(modalTime);
     let subValue = 'General';
     
     if (modalCat === 'clients' && modalSub !== 'none') {
@@ -202,7 +217,7 @@ export default function ModernTaskPlannerOS() {
     const formObj = {
       title: modalTitle,
       description: modalDesc.trim(),
-      time: constructedTime,
+      time: formatted12hTime,
       category: modalCat,
       subcategory: subValue,
       priority: modalPriority,
@@ -358,7 +373,6 @@ export default function ModernTaskPlannerOS() {
                 <h3 style={{ margin: 0 }}>Categories Hub</h3>
                 <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
                   <input type="text" placeholder={editingCategory ? "Update category name" : "Insert new category"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
-                  {/* Cleaned Button Label: Add Category */}
                   <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingCategory ? 'Update' : '+ Add Category'}</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
@@ -409,7 +423,7 @@ export default function ModernTaskPlannerOS() {
         </div>
       </div>
 
-      {/* EDIT TASK DRAWER PANEL (WITH TIME EDIT CONTROLS) */}
+      {/* EDIT TASK DRAWER PANEL */}
       {inspectedTask && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setInspectedTask(null)} />
@@ -471,31 +485,22 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
-              {/* DATE & TIME EDIT CONTROLS */}
+              {/* NATIVE DATE & TIME PICKERS */}
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Target Date & Time</label>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
-                  <select value={editHour} onChange={e => setEditHour(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px' }}>
-                    {['01','02','03','04','05','06','07','08','09','10','11','12'].map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                  <select value={editMin} onChange={e => setEditMin(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px' }}>
-                    {['00','15','30','45'].map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <select value={editPeriod} onChange={e => setEditPeriod(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFF', fontWeight: 'bold' }}>
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                  </select>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
+                  <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
               </div>
             </div>
 
             <div style={{ marginTop: 'auto', display: 'flex', gap: '10px', paddingTop: '16px', borderTop: `1px solid ${VISUAL_THEME.border}` }}>
               <button onClick={async () => {
-                const updatedTime = `${editHour}:${editMin} ${editPeriod}`;
+                const formattedTime = convert24to12(editTime);
                 const updatedObj = {
                   ...inspectedTask,
-                  time: updatedTime
+                  time: formattedTime
                 };
                 await taskService.updateTask(inspectedTask.id, updatedObj);
                 await loadTasks();
@@ -555,20 +560,12 @@ export default function ModernTaskPlannerOS() {
               </div>
             </div>
 
+            {/* NATIVE DATE & TIME INPUTS */}
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Milestone Target Reminder</label>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <input type="date" value={modalDate} onChange={e => setModalDate(e.target.value)} style={{ flex: 2, minWidth: '120px', padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-                <select value={modalHour} onChange={e => setModalHour(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  {['01','02','03','04','05','06','07','08','09','10','11','12'].map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-                <select value={modalMin} onChange={e => setModalMin(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  {['00','15','30','45'].map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <select value={modalPeriod} onChange={e => setModalPeriod(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFFFFF', fontWeight: 'bold', cursor: 'pointer', boxSizing: 'border-box' }}>
-                  <option value="AM">AM</option>
-                  <option value="PM">PM</option>
-                </select>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input type="date" value={modalDate} onChange={e => setModalDate(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} />
+                <input type="time" value={modalTime} onChange={e => setModalTime(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} />
               </div>
             </div>
 
