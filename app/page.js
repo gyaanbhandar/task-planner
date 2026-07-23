@@ -176,13 +176,24 @@ export default function ModernTaskPlannerOS() {
     }
   };
 
-  // Base view task list (relative to current sidebar selection)
+// Base view task list (Including Recurring Tasks Logic Fix)
   const getBaseViewTasks = () => {
     let dataset = [...tasks];
+
     if (currentView === 'today') {
-      dataset = dataset.filter(t => t.deadline === todayStr());
+      // Show today's deadline tasks OR active daily recurring tasks
+      dataset = dataset.filter(t => 
+        t.deadline === todayStr() || 
+        t.type === 'daily' || 
+        (t.type === 'weekly' && new Date(t.deadline).getDay() === new Date().getDay())
+      );
     } else if (currentView === 'upcoming') {
-      dataset = dataset.filter(t => t.deadline > todayStr());
+      // Show future tasks OR weekly/monthly recurring rules
+      dataset = dataset.filter(t => 
+        t.deadline > todayStr() || 
+        t.type === 'weekly' || 
+        t.type === 'monthly'
+      );
     } else if (currentView === 'category' && activeCategory) {
       if (activeCategory === 'clients') {
         const allClientNames = clientsList.map(c => c.name.toLowerCase());
@@ -197,7 +208,6 @@ export default function ModernTaskPlannerOS() {
     }
     return dataset;
   };
-
   const baseViewTasks = getBaseViewTasks();
 
   // Counts calculated RELATIVE to active view context!
