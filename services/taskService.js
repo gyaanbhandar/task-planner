@@ -25,6 +25,7 @@ export const taskService = {
       priority: form.priority, 
       type: form.type, 
       deadline: form.deadline || null, 
+      time: form.time || '09:00 AM',
       status: 'pending', 
       approval_status: 'none', 
       suggested_by: 'user', 
@@ -41,7 +42,8 @@ export const taskService = {
       subcategory: form.subcategory, 
       priority: form.priority, 
       type: form.type, 
-      deadline: form.deadline || null 
+      deadline: form.deadline || null,
+      time: form.time || '09:00 AM'
     }).eq('id', id);
     if (error) throw error;
   },
