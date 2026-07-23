@@ -5,34 +5,61 @@ import { useState, useEffect } from 'react';
 export default function ViewNotifications() {
   const [isEnabled, setIsEnabled] = useState(false);
   const [statusText, setStatusText] = useState('Disabled ❌');
+  const [isIOS, setIsIOS] = useState(false);
 
   // Load initial notification status safely
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
-        const savedSetting = localStorage.getItem('notifications_enabled');
-        const active = savedSetting !== 'false';
-        setIsEnabled(active);
-        setStatusText(active ? 'Active ✓' : 'Disabled ❌');
-      } else if (Notification.permission === 'denied') {
-        setIsEnabled(false);
-        setStatusText('Blocked ❌');
+    if (typeof window !== 'undefined') {
+      // Check if user is on iPhone / iOS
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const ios = /iphone|ipad|ipod/.test(userAgent);
+      setIsIOS(ios);
+
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          const savedSetting = localStorage.getItem('notifications_enabled');
+          const active = savedSetting !== 'false';
+          setIsEnabled(active);
+          setStatusText(active ? 'Active ✓' : 'Disabled ❌');
+        } else if (Notification.permission === 'denied') {
+          setIsEnabled(false);
+          setStatusText('Blocked ❌');
+        } else {
+          setIsEnabled(false);
+          setStatusText('Disabled ❌');
+        }
       } else {
-        setIsEnabled(false);
-        setStatusText('Disabled ❌');
+        setStatusText('Not Supported ❌');
       }
     }
   }, []);
 
-  // Handle Toggle Switch Click (Works smoothly on both Mobile & Desktop)
+  // Handle Toggle Switch Click with Mobile Unblock Helper
   const handleToggle = async () => {
     if (typeof window === 'undefined') return;
 
     if (!('Notification' in window)) {
-      alert("Aapka browser web notifications support nahi karta hai.");
+      alert("Aapka mobile browser web notifications support nahi karta hai.");
       return;
     }
 
+    // Special Guide for iPhone Users
+    if (isIOS && Notification.permission !== 'granted') {
+      alert(
+        "📱 iPhone Users ke liye Guide:\n\niOS Safari normal browser tab me notifications block karta hai.\n\n1. Safari me niche Share button par tap karein.\n2. 'Add to Home Screen' chunein.\n3. Home Screen wali App icon se khol kar Toggle ON karein."
+      );
+      return;
+    }
+
+    // If Chrome Mobile automatically blocked permissions
+    if (Notification.permission === 'denied') {
+      alert(
+        "🔒 Permission Browser Se Blocked Hai!\n\nMobile Chrome par Allow karne ke steps:\n\n1. Browser me URL ke paas 🔒 (Lock icon) ya 3 Dots par click karein.\n2. 'Permissions' ya 'Site Settings' kholne.\n3. 'Notifications' ko 'Allow' kar dein.\n4. Page Refresh karke wapis Toggle ON karein!"
+      );
+      return;
+    }
+
+    // Standard Toggle Flow
     if (!isEnabled) {
       try {
         let currentPermission = Notification.permission;
@@ -46,24 +73,20 @@ export default function ViewNotifications() {
           setStatusText('Active ✓');
           localStorage.setItem('notifications_enabled', 'true');
 
-          // Send confirmation notification
           try {
             new Notification("Task Planner", {
               body: "Notifications active ho gaye hain!",
             });
           } catch (e) {
-            console.log("Notification error:", e);
+            console.log("Notification trigger error:", e);
           }
         } else {
           setIsEnabled(false);
           setStatusText('Blocked ❌');
           localStorage.setItem('notifications_enabled', 'false');
-          alert(
-            "Notification Permission Blocked!\n\nBrowser ki settings > Site Settings > Notifications mein jaakar 'Allow' karein."
-          );
         }
       } catch (error) {
-        console.error("Permission error:", error);
+        console.error("Permission request error:", error);
       }
     } else {
       setIsEnabled(false);
@@ -76,7 +99,7 @@ export default function ViewNotifications() {
   const handleTestAlert = () => {
     if (typeof window === 'undefined') return;
 
-    // Play Beep Sound
+    // Play Beep Sound Tone
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = audioCtx.createOscillator();
@@ -89,16 +112,16 @@ export default function ViewNotifications() {
       osc.start();
       osc.stop(audioCtx.currentTime + 0.3);
     } catch (e) {
-      console.log("Audio context play error:", e);
+      console.log("Audio play error:", e);
     }
 
-    // Trigger Test Popup if granted
+    // Trigger Test Popup
     if ('Notification' in window && Notification.permission === 'granted' && isEnabled) {
       new Notification("Task Planner Test Alert 🔔", {
         body: "Sound and Desktop Alert successfully test ho gaya hai!",
       });
     } else {
-      alert("🔊 Sound Test Triggered!\n(Desktop Popup dekhne ke liye Pehle Toggle ko ON karke permissions Allow karein)");
+      alert("🔊 Sound Test Triggered!\n\n(Popup notification ke liye pehle toggle switch par click karke permissions allow karein)");
     }
   };
 
@@ -131,7 +154,7 @@ export default function ViewNotifications() {
           </p>
         </div>
 
-        {/* Action Controls (Toggle Switch + Test Sound Button) */}
+        {/* Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           
           {/* Test Sound Button */}
@@ -202,7 +225,7 @@ export default function ViewNotifications() {
         
         <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '14px', lineHeight: '1.6' }}>
           <li style={{ marginBottom: '8px' }}>
-            Aapke <strong>Today's Tasks</strong> mein jis task ka exact time (jaise 02:30 PM) aayega, tab browser automatic desktop popup screen ke corner par bhejega.
+            Aapke <strong>Today's Tasks</strong> mein jis task ka exact time (jaise 02:30 PM) aayega, tab browser automatic popup screen ke corner par bhejega.
           </li>
           <li>
             Notification ke sath ek 🔔 sound tone play hogi taaki aapka koi important task miss na ho.
