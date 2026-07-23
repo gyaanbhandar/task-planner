@@ -1,91 +1,57 @@
-'use client';
-import React from 'react';
-import { VISUAL_THEME, PRIORITY_CONFIG } from '../constants/taskConstants';
-
-export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isMobile }) {
-  const priorityStyle = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
-  
-  // Format or extract clean 12-hour AM/PM time
-  const getFormattedTime = () => {
-    if (task.time) return task.time;
-    if (task.description) {
-      const match = task.description.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i);
-      if (match) return match[0];
-    }
-    return '09:00 AM'; // Default AM fallback
-  };
-
-  const displayTime = getFormattedTime();
-  
-  // Clean Description text
-  const cleanDesc = (task.description || '')
-    .replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '')
-    .trim();
-
+export default function TaskCard({ task, onEdit, onDelete, onToggleComplete }) {
   return (
-    <div 
-      style={{ 
-        padding: '14px 16px', 
-        background: '#FFFFFF', 
-        borderRadius: '12px', 
-        border: `1px solid ${VISUAL_THEME.border}`, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        gap: '12px',
-        boxSizing: 'border-box'
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, overflow: 'hidden' }}>
-        <input 
-          type="checkbox" 
-          checked={task.status === 'done'} 
-          onChange={() => onToggle(task.id, task.status)}
-          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: VISUAL_THEME.accent }}
+    <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      
+      {/* Left Section: Checkbox, Title & Badges */}
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <input
+          type="checkbox"
+          checked={task.completed}
+          onChange={() => onToggleComplete(task.id)}
+          className="mt-1 h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0 cursor-pointer"
         />
-        <div style={{ cursor: 'pointer', flex: 1, overflow: 'hidden' }} onClick={() => onSelectDetail(task)}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: task.status === 'done' ? '#94A3B8' : VISUAL_THEME.text, textDecoration: task.status === 'done' ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="min-w-0 flex-1">
+          <h3 className={`font-medium text-gray-900 text-sm sm:text-base break-words ${task.completed ? 'line-through text-gray-400' : ''}`}>
             {task.title}
-          </div>
+          </h3>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-            {task.category && (
-              <span style={{ fontSize: '11px', background: '#EEF2FF', color: VISUAL_THEME.accent, padding: '2px 8px', borderRadius: '4px', fontWeight: 500, textTransform: 'capitalize' }}>
-                {task.category}
-              </span>
-            )}
-            {task.subcategory && task.subcategory !== 'General' && (
-              <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
-                🏢 {task.subcategory}
-              </span>
-            )}
-            {task.deadline && (
-              <span style={{ fontSize: '11px', color: '#94A3B8' }}>
-                📅 {task.deadline}
-              </span>
-            )}
-            {cleanDesc && (
-              <span style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                • {cleanDesc}
+          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500">
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 font-medium">
+              {task.category}
+            </span>
+            <span className="flex items-center gap-1 text-gray-400">
+              📅 {task.date}
+            </span>
+            {task.link && (
+              <span className="text-indigo-500 italic truncate max-w-[120px]">
+                • {task.link}
               </span>
             )}
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-        {displayTime && (
-          <span style={{ fontSize: '12px', fontWeight: 700, color: VISUAL_THEME.accent, background: '#EEF2FF', padding: '4px 10px', borderRadius: '6px', border: `1px solid rgba(99,102,241,0.2)` }}>
-            🕒 {displayTime}
-          </span>
-        )}
-        <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px', background: priorityStyle.bg, color: priorityStyle.color, textTransform: 'uppercase' }}>
-          {task.priority || 'medium'}
+      {/* Right Section: Time, Priority & Actions */}
+      <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 shrink-0">
+        <span className="px-2.5 py-1 bg-indigo-50/70 text-indigo-600 font-medium rounded-lg text-xs flex items-center gap-1">
+          🕒 {task.time || '09:00 AM'}
         </span>
-        <button onClick={() => onDelete(task.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}>
+        
+        <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+          task.priority === 'HIGH' ? 'bg-red-50 text-red-600' :
+          task.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
+        }`}>
+          {task.priority}
+        </span>
+
+        <button 
+          onClick={() => onDelete(task.id)}
+          className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+        >
           🗑️
         </button>
       </div>
+
     </div>
   );
 }
