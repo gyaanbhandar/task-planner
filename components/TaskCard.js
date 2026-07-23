@@ -1,55 +1,82 @@
-// components/TaskCard.js
 'use client';
 import React from 'react';
-import { CATEGORIES, PRIORITY_CONFIG, VISUAL_THEME } from '../constants/taskConstants';
+import { VISUAL_THEME, PRIORITY_CONFIG } from '../constants/taskConstants';
 
-export default function TaskCard({ task, onToggle, onSelectDetail, onDelete }) {
-  const matchedCat = CATEGORIES.find(c => c.id === task.category);
-  const priorityInfo = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
-  const isDone = task.status === 'done';
+export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isMobile }) {
+  const priorityStyle = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+  
+  // Clean Time Display Logic (Extracts time property or parses cleanly)
+  const displayTime = task.time || (task.description && task.description.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i)?.[0]) || '';
+  
+  // Clean Description (Strips out raw 'Time: 12:00 AM' markers from note body)
+  const cleanDesc = (task.description || '')
+    .replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '')
+    .trim();
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: VISUAL_THEME.surface, border: `1px solid ${VISUAL_THEME.border}`, borderRadius: '12px', transition: 'all 0.2s ease', cursor: 'pointer' }} onClick={() => onSelectDetail(task)}>
-      
-      {/* Left Structural Side Details Meta Frame */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
-        <div onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} style={{ width: '20px', height: '20px', borderRadius: '6px', border: `2px solid ${isDone ? VISUAL_THEME.accent : '#CBD5E1'}`, background: isDone ? VISUAL_THEME.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s ease' }}>
-          {isDone && <span style={{ color: '#FFFFFF', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
-        </div>
-
-        <div style={{ minWidth: 0 }}>
-          <h4 style={{ fontSize: '14px', fontWeight: 500, color: isDone ? VISUAL_THEME.textSec : VISUAL_THEME.text, textDecoration: isDone ? 'line-through' : 'none', margin: '0 0 6px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+    <div 
+      style={{ 
+        padding: '14px 16px', 
+        background: '#FFFFFF', 
+        borderRadius: '12px', 
+        border: `1px solid ${VISUAL_THEME.border}`, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        gap: '12px',
+        boxSizing: 'border-box'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, overflow: 'hidden' }}>
+        <input 
+          type="checkbox" 
+          checked={task.status === 'done'} 
+          onChange={() => onToggle(task.id, task.status)}
+          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: VISUAL_THEME.accent }}
+        />
+        <div style={{ cursor: 'pointer', flex: 1, overflow: 'hidden' }} onClick={() => onSelectDetail(task)}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: task.status === 'done' ? '#94A3B8' : VISUAL_THEME.text, textDecoration: task.status === 'done' ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {task.title}
-          </h4>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: matchedCat?.bg || '#F1F5F9', color: matchedCat?.color || VISUAL_THEME.textSec, fontWeight: 500 }}>
-              {matchedCat ? `${matchedCat.icon} ${matchedCat.name}` : 'Task'}
-            </span>
-            {task.subcategory && (
-              <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: '#F8FAFC', color: VISUAL_THEME.textSec, border: `1px solid ${VISUAL_THEME.border}` }}>
-                {task.subcategory}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+            {task.category && (
+              <span style={{ fontSize: '11px', background: '#EEF2FF', color: VISUAL_THEME.accent, padding: '2px 8px', borderRadius: '4px', fontWeight: 500, textTransform: 'capitalize' }}>
+                {task.category}
+              </span>
+            )}
+            {task.subcategory && task.subcategory !== 'General' && (
+              <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
+                🏢 {task.subcategory}
               </span>
             )}
             {task.deadline && (
-              <span style={{ fontSize: '11px', color: VISUAL_THEME.textSec, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: '#94A3B8' }}>
                 📅 {task.deadline}
+              </span>
+            )}
+            {cleanDesc && (
+              <span style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                • {cleanDesc}
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Right Core Automation Logs Operations Panel */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '12px' }} onClick={e => e.stopPropagation()}>
-        <span style={{ fontSize: '12px', color: VISUAL_THEME.textSec, fontWeight: 500 }}>
-          {task.time || '09:00 AM'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+        {displayTime && (
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', background: '#F8FAFC', padding: '4px 8px', borderRadius: '6px', border: `1px solid ${VISUAL_THEME.border}` }}>
+            🕒 {displayTime}
+          </span>
+        )}
+        <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px', background: priorityStyle.bg, color: priorityStyle.color, textTransform: 'uppercase' }}>
+          {task.priority || 'medium'}
         </span>
-        <span style={{ fontSize: '11px', color: priorityInfo.color, background: priorityInfo.bg, padding: '3px 8px', borderRadius: '6px', fontWeight: 600, textTransform: 'uppercase' }}>
-          {priorityInfo.label}
-        </span>
-        <button onClick={() => onDelete(task.id)} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '14px', padding: '4px' }}>🗑️</button>
+        <button onClick={() => onDelete(task.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}>
+          🗑️
+        </button>
       </div>
-
     </div>
   );
 }
