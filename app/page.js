@@ -147,7 +147,7 @@ export default function ModernTaskPlannerOS() {
     if (!tasks || tasks.length === 0) return;
 
     const interval = setInterval(() => {
-      const isEnabled = localStorage.getItem('app_notifications_enabled') !== 'false';
+      const isEnabled = localStorage.getItem('notifications_enabled') !== 'false';
       if (!isEnabled) return;
 
       const now = new Date();
