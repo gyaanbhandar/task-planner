@@ -1,59 +1,140 @@
+'use client';
 import React from 'react';
+import { VISUAL_THEME, PRIORITY_CONFIG } from '../constants/taskConstants';
 
-export default function TaskCard({ task, onUpdate, onDelete }) {
-  const getPriorityColor = (priority) => {
-    switch ((priority || '').toLowerCase()) {
-      case 'high': return 'bg-red-100 text-red-700 border-red-200';
-      case 'medium': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'low': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isMobile }) {
+  const priorityStyle = PRIORITY_CONFIG[task?.priority?.toLowerCase()] || 
+                        PRIORITY_CONFIG[task?.priority] || 
+                        PRIORITY_CONFIG.medium || 
+                        { bg: '#FEF3C7', color: '#D97706' };
+  
+  // Format or extract clean 12-hour AM/PM time
+  const getFormattedTime = () => {
+    if (task.time) return task.time;
+    if (task.description) {
+      const match = task.description.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i);
+      if (match) return match[0];
     }
+    return '09:00 AM'; // Default AM fallback
   };
 
-  return (
-    <div className={`flex items-center justify-between p-4 rounded-xl border bg-white shadow-sm hover:shadow transition ${task.completed ? 'opacity-60 bg-gray-50' : ''}`}>
-      <div className="flex items-center space-x-4 flex-1">
-        {/* Drag handle indicator icon */}
-        <div className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing">
-          ⠿
-        </div>
+  const displayTime = getFormattedTime();
+  
+  // Clean Description text
+  const cleanDesc = (task.description || '')
+    .replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '')
+    .trim();
 
-        {/* Checkbox */}
+  return (
+    <div 
+      style={{ 
+        padding: isMobile ? '12px' : '14px 16px', 
+        background: '#FFFFFF', 
+        borderRadius: '12px', 
+        border: `1px solid ${VISUAL_THEME.border}`, 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center', 
+        justifyContent: 'space-between', 
+        gap: isMobile ? '10px' : '12px',
+        boxSizing: 'border-box',
+        marginBottom: '10px'
+      }}
+    >
+      {/* Top / Main Section (Checkbox, Title, Badges) */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
         <input 
           type="checkbox" 
-          checked={!!task.completed} 
-          onChange={(e) => onUpdate(task.id, { completed: e.target.checked })}
-          className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+          checked={task.status === 'done'} 
+          onChange={() => onToggle(task.id, task.status)}
+          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: VISUAL_THEME.accent, marginTop: '2px', flexShrink: 0 }}
         />
-
-        {/* Title & Details */}
-        <div className="flex-1">
-          <h3 className={`font-medium text-gray-800 ${task.completed ? 'line-through text-gray-400' : ''}`}>
-            {task.title || task.text}
-          </h3>
-          {task.category && (
-            <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-medium mt-1 inline-block">
-              {task.category}
-            </span>
-          )}
+        
+        <div style={{ cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onSelectDetail(task)}>
+          {/* Title */}
+          <div 
+            style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: task.status === 'done' ? '#94A3B8' : VISUAL_THEME.text, 
+              textDecoration: task.status === 'done' ? 'line-through' : 'none', 
+              whiteSpace: isMobile ? 'normal' : 'nowrap',
+              wordBreak: 'break-word',
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis' 
+            }}
+          >
+            {task.title}
+          </div>
+          
+          {/* Badges Container */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+            {task.category && (
+              <span style={{ fontSize: '11px', background: '#EEF2FF', color: VISUAL_THEME.accent, padding: '2px 8px', borderRadius: '4px', fontWeight: 500, textTransform: 'capitalize' }}>
+                {task.category}
+              </span>
+            )}
+            {task.subcategory && task.subcategory !== 'General' && (
+              <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
+                🏢 {task.subcategory}
+              </span>
+            )}
+            {task.deadline && (
+              <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                📅 {task.deadline}
+              </span>
+            )}
+            {cleanDesc && (
+              <span style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', maxWidth: isMobile ? '100%' : '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                • {cleanDesc}
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Mobile Delete Button */}
+        {isMobile && (
+          <button 
+            onClick={() => onDelete(task.id)} 
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '0 4px', flexShrink: 0 }}
+          >
+            🗑️
+          </button>
+        )}
       </div>
 
-      {/* Right side metadata & actions */}
-      <div className="flex items-center space-x-3">
-        {task.priority && (
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${getPriorityColor(task.priority)}`}>
-            {task.priority.toUpperCase()}
+      {/* Right / Bottom Section (Time, Priority, Desktop Delete) */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: isMobile ? 'space-between' : 'flex-end', 
+          gap: '10px', 
+          flexShrink: 0,
+          paddingTop: isMobile ? '8px' : '0',
+          borderTop: isMobile ? '1px solid #F1F5F9' : 'none'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {displayTime && (
+            <span style={{ fontSize: '12px', fontWeight: 700, color: VISUAL_THEME.accent, background: '#EEF2FF', padding: '4px 10px', borderRadius: '6px', border: `1px solid rgba(99,102,241,0.2)` }}>
+              🕒 {displayTime}
+            </span>
+          )}
+          <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px', background: priorityStyle.bg, color: priorityStyle.color, textTransform: 'uppercase' }}>
+            {task.priority || 'medium'}
           </span>
+        </div>
+
+        {/* Desktop Delete Button */}
+        {!isMobile && (
+          <button 
+            onClick={() => onDelete(task.id)} 
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}
+          >
+            🗑️
+          </button>
         )}
-        
-        <button 
-          onClick={() => onDelete(task.id)}
-          className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg transition"
-          title="Delete Task"
-        >
-          🗑️
-        </button>
       </div>
     </div>
   );
