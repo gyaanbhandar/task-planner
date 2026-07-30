@@ -1,79 +1,56 @@
-'use client';
-import { useState, useCallback } from 'react';
-import { taskService } from '../services/taskService';
+import { useState, useEffect } from 'react';
 
-export function useTasks(session, showToast) {
+export function useTasks() {
+  // Default active tab changed from 'all' to 'today'
+  const [activeTab, setActiveTab] = useState('today');
   const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const loadTasks = useCallback(async () => {
-    if (!session) return;
-    try {
-      const data = await taskService.fetchTasks();
-      setTasks(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
-
-  const handleAddTask = async (form, emptyForm, setForm, setShowAdd) => {
-    if (!form.title.trim()) return;
-    try {
-      await taskService.createTask(form, session.user.id);
-      await loadTasks();
-      setForm({ ...emptyForm, category: form.category, subcategory: form.subcategory });
-      setShowAdd(false);
-      showToast('Task added ✓');
-    } catch (err) {
-      console.error(err);
-    }
+  // Reorder function for drag and drop priority handling
+  const reorderTasks = (newOrderedTasks) => {
+    setTasks(newOrderedTasks);
+    // Optional: save to localstorage or backend sync if required
   };
 
-  const handleUpdateTask = async (editTaskId, form, emptyForm, setForm, setEditTask, setShowAdd) => {
-    if (!form.title.trim()) return;
-    try {
-      await taskService.updateTask(editTaskId, form);
-      await loadTasks();
-      setEditTask(null);
-      setForm(emptyForm);
-      setShowAdd(false);
-      showToast('Updated ✓');
-    } catch (err) {
-      console.error(err);
-    }
+  const addTask = (taskData) => {
+    const newTask = {
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      completed: false,
+      ...taskData,
+    };
+    setTasks(prev => [newTask, ...prev]);
   };
 
-  const handleToggleStatus = async (id) => {
-    const task = tasks.find(tk => tk.id === id);
-    if (!task) return;
-    try {
-      await taskService.toggleTaskStatus(id, task.status);
-      await loadTasks();
-    } catch (err) {
-      console.error(err);
-    }
+  const updateTask = (id, updatedFields) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updatedFields } : t));
   };
 
-  const handleDeleteTask = async (id) => {
-    try {
-      await taskService.deleteTask(id);
-      await loadTasks();
-      showToast('Deleted');
-    } catch (err) {
-      console.error(err);
-    }
+  const deleteTask = (id) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Compute stats across all views
+  const stats = {
+    totalCount: tasks.length,
+    todayCount: tasks.filter(t => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return t.date === todayStr || t.dueDate === todayStr;
+    }).length,
+    pendingCount: tasks.filter(t => !t.completed).length,
+    completedCount: tasks.filter(t => t.completed).length,
   };
 
   return {
     tasks,
-    loading,
-    setLoading,
-    loadTasks,
-    handleAddTask,
-    handleUpdateTask,
-    handleToggleStatus,
-    handleDeleteTask
+    activeTab,
+    setActiveTab,
+    selectedCategory,
+    setSelectedCategory,
+    addTask,
+    updateTask,
+    deleteTask,
+    reorderTasks,
+    stats,
   };
 }
