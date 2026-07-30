@@ -1,14 +1,21 @@
 import { supabase } from '../lib/supabase';
 
 export const taskService = {
-  async fetchTasks() {
-    const { data, error } = await supabase
+  async fetchTasks(userId) {
+    // Phase 2: RLS - filter by user_id for data isolation
+    let query = supabase
       .from('tasks')
       .select('*')
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
       
+    const { data, error } = await query;
     if (error) throw error;
-    return data.map(tk => ({
+    return (data || []).map(tk => ({
       ...tk,
       deadline: tk.deadline || '',
       description: tk.description || '',
@@ -60,6 +67,15 @@ export const taskService = {
   async deleteTask(id) {
     const { error } = await supabase.from('tasks').delete().eq('id', id);
     if (error) throw error;
+  },
+
+  // Drag-and-drop: update sort_order for reordered tasks
+  async updateTaskOrder(orderedIds) {
+    // Batch update sort_order for each task
+    const updates = orderedIds.map((id, index) => 
+      supabase.from('tasks').update({ sort_order: index }).eq('id', id)
+    );
+    await Promise.all(updates);
   },
 
   async fetchAiPlan(tasksSummary) {
