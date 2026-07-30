@@ -8,19 +8,17 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
                         PRIORITY_CONFIG.medium || 
                         { bg: '#FEF3C7', color: '#D97706' };
   
-  // Format or extract clean 12-hour AM/PM time
   const getFormattedTime = () => {
     if (task.time) return task.time;
     if (task.description) {
       const match = task.description.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i);
       if (match) return match[0];
     }
-    return '09:00 AM'; // Default AM fallback
+    return '09:00 AM';
   };
 
   const displayTime = getFormattedTime();
   
-  // Clean Description text
   const cleanDesc = (task.description || '')
     .replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '')
     .trim();
@@ -38,10 +36,9 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
         justifyContent: 'space-between', 
         gap: isMobile ? '10px' : '12px',
         boxSizing: 'border-box',
-        marginBottom: '10px'
+        marginBottom: '4px'
       }}
     >
-      {/* Top / Main Section (Checkbox, Title, Badges) */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
         <input 
           type="checkbox" 
@@ -51,7 +48,6 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
         />
         
         <div style={{ cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onSelectDetail(task)}>
-          {/* Title */}
           <div 
             style={{ 
               fontSize: '14px', 
@@ -67,7 +63,6 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
             {task.title}
           </div>
           
-          {/* Badges Container */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
             {task.category && (
               <span style={{ fontSize: '11px', background: '#EEF2FF', color: VISUAL_THEME.accent, padding: '2px 8px', borderRadius: '4px', fontWeight: 500, textTransform: 'capitalize' }}>
@@ -92,7 +87,6 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
           </div>
         </div>
 
-        {/* Mobile Delete Button */}
         {isMobile && (
           <button 
             onClick={() => onDelete(task.id)} 
@@ -103,7 +97,6 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
         )}
       </div>
 
-      {/* Right / Bottom Section (Time, Priority, Desktop Delete) */}
       <div 
         style={{ 
           display: 'flex', 
@@ -126,7 +119,6 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
           </span>
         </div>
 
-        {/* Desktop Delete Button */}
         {!isMobile && (
           <button 
             onClick={() => onDelete(task.id)} 
