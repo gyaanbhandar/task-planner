@@ -9,7 +9,8 @@ export function useTasks(session, showToast) {
   const loadTasks = useCallback(async () => {
     if (!session) return;
     try {
-      const data = await taskService.fetchTasks();
+      // Phase 2: Pass user_id for data isolation
+      const data = await taskService.fetchTasks(session.user.id);
       setTasks(data);
     } catch (err) {
       console.error(err);
@@ -66,6 +67,17 @@ export function useTasks(session, showToast) {
     }
   };
 
+  // Drag-and-drop reorder handler
+  const handleReorderTasks = async (reorderedTasks) => {
+    setTasks(reorderedTasks);
+    try {
+      const orderedIds = reorderedTasks.map(t => t.id);
+      await taskService.updateTaskOrder(orderedIds);
+    } catch (err) {
+      console.error('Reorder save failed:', err);
+    }
+  };
+
   return {
     tasks,
     loading,
@@ -74,6 +86,7 @@ export function useTasks(session, showToast) {
     handleAddTask,
     handleUpdateTask,
     handleToggleStatus,
-    handleDeleteTask
+    handleDeleteTask,
+    handleReorderTasks
   };
 }
