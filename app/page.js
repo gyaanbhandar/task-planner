@@ -5,6 +5,7 @@ import { VISUAL_THEME, CATEGORIES, CLIENTS, PRIORITY_CONFIG } from '../constants
 import { todayStr, formatIndianDate } from '../utils/dateUtils';
 import Sidebar from '../components/Sidebar';
 import AuthScreen from '../components/AuthScreen';
+import IconPicker from '../components/IconPicker';
 import { authService } from '../services/authService';
 import { taskService } from '../services/taskService';
 import { notificationService } from '../services/notificationService';
@@ -16,8 +17,10 @@ import ViewCalendar from '../components/ViewCalendar';
 import ViewAllTasks from '../components/ViewAllTasks';
 import ViewRecurring from '../components/ViewRecurring';
 import ViewNotifications from '../components/ViewNotifications';
+import ViewProfile from '../components/ViewProfile';
+import ViewAdmin from '../components/ViewAdmin';
 
-// Helper: Convert 12h "02:30 PM" to 24h "14:30" for HTML <input type="time">
+// Helper: Convert 12h "02:30 PM" to 24h "14:30"
 const convert12to24 = (time12) => {
   if (!time12) return '09:00';
   const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
@@ -29,7 +32,7 @@ const convert12to24 = (time12) => {
   return `${String(hour).padStart(2, '0')}:${m}`;
 };
 
-// Helper: Convert 24h "14:30" to 12h "02:30 PM" for DB & Task Cards
+// Helper: Convert 24h "14:30" to 12h "02:30 PM"
 const convert24to12 = (time24) => {
   if (!time24) return '09:00 AM';
   const parts = time24.split(':');
@@ -44,43 +47,44 @@ const convert24to12 = (time24) => {
 export default function ModernTaskPlannerOS() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   
-  // Navigation & View Routing States
+  // Phase 1: Default view is 'today'
   const [currentView, setCurrentView] = useState('today'); 
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeClient, setActiveClient] = useState(null);
-  const [dashboardFilter, setDashboardFilter] = useState('all');
+  // Phase 1: Default dashboard filter is 'today' (was 'all')
+  const [dashboardFilter, setDashboardFilter] = useState('today');
   
-  // UI Layout States
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inspectedTask, setInspectedTask] = useState(null);
-
-  // Time Picker State for Edit Drawer
   const [editTime, setEditTime] = useState('09:00');
   
-  // Dynamic Workspace Categories & Clients Management States
+  // Categories & Clients Management
   const [customCategories, setCustomCategories] = useState(CATEGORIES);
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('📂');
+  const [showIconPicker, setShowIconPicker] = useState(false);
   
   const [clientsList, setClientsList] = useState(CLIENTS);
   const [newClientName, setNewClientName] = useState('');
   const [editingClient, setEditingClient] = useState(null);
 
-  // AI Engine State
+  // AI Engine
   const [aiPlanOutput, setAiPlanOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Form Input States (Create Modal)
+  // Create Modal Form States
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
   const [modalCat, setModalCat] = useState('personal');
   const [modalSub, setModalSub] = useState('none'); 
   const [modalPriority, setModalPriority] = useState('medium');
   const [modalDate, setModalDate] = useState(todayStr());
-  const [modalTime, setModalTime] = useState('09:00'); // 24h internal state for native clock picker
+  const [modalTime, setModalTime] = useState('09:00');
   const [modalFrequency, setModalFrequency] = useState('one-time');
 
   const notifiedTasksRef = useRef(new Set());
@@ -91,7 +95,8 @@ export default function ModernTaskPlannerOS() {
     loading: tasksLoading,
     loadTasks,
     handleToggleStatus,
-    handleDeleteTask
+    handleDeleteTask,
+    handleReorderTasks
   } = useTasks(session, dummyToast);
 
   useEffect(() => {
@@ -108,10 +113,13 @@ export default function ModernTaskPlannerOS() {
   }, []);
 
   useEffect(() => {
-    if (session) { loadTasks(); }
+    if (session) { 
+      loadTasks();
+      // Check admin status
+      authService.isAdmin(session.user.id).then(admin => setIsAdmin(admin)).catch(() => {});
+    }
   }, [session, loadTasks]);
 
-  // Sync Edit Drawer Time when a task is inspected
   const handleSelectInspectedTask = (task) => {
     setInspectedTask(task);
     if (!task) return;
@@ -126,17 +134,13 @@ export default function ModernTaskPlannerOS() {
       const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.type = 'sine';
       osc.frequency.setValueAtTime(587.33, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-
       gain.gain.setValueAtTime(0.15, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-
       osc.connect(gain);
       gain.connect(ctx.destination);
-
       osc.start();
       osc.stop(ctx.currentTime + 0.5);
     } catch (e) {}
@@ -145,16 +149,13 @@ export default function ModernTaskPlannerOS() {
   // Clock Loop for Real-time alerts
   useEffect(() => {
     if (!tasks || tasks.length === 0) return;
-
     const interval = setInterval(() => {
       const isEnabled = localStorage.getItem('notifications_enabled') !== 'false';
       if (!isEnabled) return;
-
       const now = new Date();
       let currentHour = now.getHours();
       const currentMinute = String(now.getMinutes()).padStart(2, '0');
       const period = currentHour >= 12 ? 'PM' : 'AM';
-
       currentHour = currentHour % 12;
       currentHour = currentHour ? currentHour : 12;
       const formattedHour = String(currentHour).padStart(2, '0');
@@ -175,7 +176,6 @@ export default function ModernTaskPlannerOS() {
         }
       });
     }, 20000);
-
     return () => clearInterval(interval);
   }, [tasks]);
 
@@ -191,6 +191,8 @@ export default function ModernTaskPlannerOS() {
     if (currentView === 'recurring') return "Recurring Tasks";
     if (currentView === 'manage_categories') return "Manage Categories";
     if (currentView === 'notifications') return "Notifications Center";
+    if (currentView === 'profile') return "Profile & Billing";
+    if (currentView === 'admin') return "Super Admin Panel";
     if (currentView === 'category' && activeCategory) {
       const catObj = customCategories.find(c => c.id === activeCategory);
       return catObj ? catObj.name : "Category";
@@ -217,7 +219,7 @@ export default function ModernTaskPlannerOS() {
     const formObj = {
       title: modalTitle,
       description: modalDesc.trim(),
-      time: formatted12hTime, // Saved explicitly as "02:30 PM"
+      time: formatted12hTime,
       category: modalCat,
       subcategory: subValue,
       priority: modalPriority,
@@ -236,16 +238,18 @@ export default function ModernTaskPlannerOS() {
     }
   };
 
+  // Phase 1: Icon Picker for category creation
   const executeCategoryOperation = () => {
     if(!newCatName.trim()) return;
     if(editingCategory) {
-      setCustomCategories(prev => prev.map(c => c.id === editingCategory ? { ...c, name: newCatName } : c));
+      setCustomCategories(prev => prev.map(c => c.id === editingCategory ? { ...c, name: newCatName, icon: newCatIcon } : c));
       setEditingCategory(null);
     } else {
       const uniqueId = 'cat_' + Date.now();
-      setCustomCategories(prev => [...prev, { id: uniqueId, name: newCatName, icon: '📂', color: '#6366F1', bg: 'rgba(99,102,241,0.04)' }]);
+      setCustomCategories(prev => [...prev, { id: uniqueId, name: newCatName, icon: newCatIcon, color: '#6366F1', bg: 'rgba(99,102,241,0.04)' }]);
     }
     setNewCatName('');
+    setNewCatIcon('📂');
   };
 
   const executeClientOperation = () => {
@@ -290,14 +294,14 @@ export default function ModernTaskPlannerOS() {
     } else if (currentView === 'category' && activeCategory) {
       if (activeCategory === 'clients') {
         const allClientNames = clientsList.map(c => c.name.toLowerCase());
-        dataset = dataset.filter(t => t.category === 'clients' || allClientNames.some(name => t.subcategory.toLowerCase().includes(name)));
+        dataset = dataset.filter(t => t.category === 'clients' || allClientNames.some(name => (t.subcategory || '').toLowerCase().includes(name)));
       } else {
         dataset = dataset.filter(t => t.category === activeCategory);
       }
     } else if (currentView === 'client_workspace' && activeClient) {
       const targetClientObj = clientsList.find(c => c.id === activeClient);
       const clientName = targetClientObj ? targetClientObj.name.toLowerCase() : '';
-      dataset = dataset.filter(t => t.subcategory.toLowerCase().includes(clientName));
+      dataset = dataset.filter(t => (t.subcategory || '').toLowerCase().includes(clientName));
     }
     return dataset;
   };
@@ -323,12 +327,36 @@ export default function ModernTaskPlannerOS() {
 
   const activeViewTitle = getViewTitle();
 
+  // Phase 1: When category/sub-client selected, default filter = 'today'
+  const handleViewChange = (v, c, cl) => {
+    setCurrentView(v);
+    setActiveCategory(c);
+    setActiveClient(cl);
+    // Default to 'today' filter when switching to category/client views
+    if (v === 'category' || v === 'client_workspace') {
+      setDashboardFilter('today');
+    } else {
+      setDashboardFilter('today');
+    }
+    setMobileSidebarOpen(false);
+  };
+
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', background: VISUAL_THEME.bg, overflow: 'hidden', position: 'relative' }}>
       
       {(!isMobile || mobileSidebarOpen) && (
         <div style={{ width: '280px', height: '100%', flexShrink: 0, position: isMobile ? 'fixed' : 'relative', zIndex: 9999 }}>
-          <Sidebar currentView={currentView} onViewChange={(v, c, cl) => { setCurrentView(v); setActiveCategory(c); setActiveClient(cl); setDashboardFilter('all'); setMobileSidebarOpen(false); }} activeCategory={activeCategory} activeClient={activeClient} userName={session.user.email} onLogout={() => authService.signOut().then(() => setSession(null))} />
+          <Sidebar
+            currentView={currentView}
+            onViewChange={handleViewChange}
+            activeCategory={activeCategory}
+            activeClient={activeClient}
+            userName={session.user.email}
+            onLogout={() => authService.signOut().then(() => setSession(null))}
+            isAdmin={isAdmin}
+            customCategories={customCategories}
+            clientsList={clientsList}
+          />
         </div>
       )}
 
@@ -339,7 +367,9 @@ export default function ModernTaskPlannerOS() {
             {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
             <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
           </div>
-          <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
+          {!['profile', 'admin'].includes(currentView) && (
+            <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
+          )}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
@@ -357,6 +387,7 @@ export default function ModernTaskPlannerOS() {
               handleToggleStatus={handleToggleStatus}
               setInspectedTask={handleSelectInspectedTask}
               handleDeleteTask={handleDeleteTask}
+              handleReorderTasks={handleReorderTasks}
               isMobile={isMobile}
               formatIndianDate={formatIndianDate}
               userName={session.user.email}
@@ -367,21 +398,43 @@ export default function ModernTaskPlannerOS() {
           {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={handleSelectInspectedTask} />}
           {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} />}
           {currentView === 'notifications' && <ViewNotifications setInspectedTask={handleSelectInspectedTask} />}
+          {currentView === 'profile' && <ViewProfile session={session} />}
+          {currentView === 'admin' && isAdmin && <ViewAdmin session={session} />}
           
           {currentView === 'manage_categories' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', boxSizing: 'border-box' }}>
               <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <h3 style={{ margin: 0 }}>Categories Hub</h3>
-                <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
-                  <input type="text" placeholder={editingCategory ? "Update category name" : "Insert new category"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
-                  <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingCategory ? 'Update' : '+ Add Category'}</button>
+                <div style={{ display: 'flex', gap: '10px', maxWidth: '500px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  {/* Icon Picker Button */}
+                  <div style={{ position: 'relative' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Icon</label>
+                    <button 
+                      onClick={() => setShowIconPicker(!showIconPicker)}
+                      style={{ width: '44px', height: '44px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      {newCatIcon}
+                    </button>
+                    {showIconPicker && (
+                      <IconPicker 
+                        selectedIcon={newCatIcon}
+                        onSelect={(icon) => setNewCatIcon(icon)}
+                        onClose={() => setShowIconPicker(false)}
+                      />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Name</label>
+                    <input type="text" placeholder={editingCategory ? "Update category name" : "New category name"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', boxSizing: 'border-box' }} />
+                  </div>
+                  <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, height: '44px' }}>{editingCategory ? 'Update' : '+ Add'}</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {customCategories.map(c => (
                     <div key={c.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', fontWeight: 500 }}>{c.icon} {c.name}</span>
                       <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
-                        <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); }}>✏️</span>
+                        <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); setNewCatIcon(c.icon); }}>✏️</span>
                         <span onClick={() => setCustomCategories(prev => prev.filter(item => item.id !== c.id))} style={{ color: '#EF4444' }}>🗑️</span>
                       </div>
                     </div>
@@ -413,7 +466,7 @@ export default function ModernTaskPlannerOS() {
           {currentView === 'ai_planner' && (
             <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', textAlign: 'center' }}>
               <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>AI Schedule Core Engine Calibration</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>AI Schedule Core Engine</h3>
               <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 24px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
                 {aiLoading ? 'Calibrating...' : '🤖 Run AI Generation'}
               </button>
@@ -486,9 +539,8 @@ export default function ModernTaskPlannerOS() {
                 </div>
               </div>
 
-              {/* DATE & TIME (NATIVE TIME PICKER WITH AM/PM IN BROWSER) */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Target Date & Time (12h AM/PM)</label>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Target Date & Time</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
                   <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} />
@@ -499,10 +551,7 @@ export default function ModernTaskPlannerOS() {
             <div style={{ marginTop: 'auto', display: 'flex', gap: '10px', paddingTop: '16px', borderTop: `1px solid ${VISUAL_THEME.border}` }}>
               <button onClick={async () => {
                 const formattedTime = convert24to12(editTime);
-                const updatedObj = {
-                  ...inspectedTask,
-                  time: formattedTime // Explicit 12h AM/PM string saved
-                };
+                const updatedObj = { ...inspectedTask, time: formattedTime };
                 await taskService.updateTask(inspectedTask.id, updatedObj);
                 await loadTasks();
                 setInspectedTask(null);
@@ -561,7 +610,6 @@ export default function ModernTaskPlannerOS() {
               </div>
             </div>
 
-            {/* DATE & TIME (NATIVE TIME PICKER WITH AM/PM IN BROWSER) */}
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Milestone Target Reminder</label>
               <div style={{ display: 'flex', gap: '8px' }}>
