@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Task Planner — AI Business OS',
-  description: 'AI-powered task planner and business operating system',
+  title: 'Task Planner — SaaS Business OS',
+  description: 'AI-powered multi-tenant task planner and business operating system',
 };
 
 export default function RootLayout({ children }) {
