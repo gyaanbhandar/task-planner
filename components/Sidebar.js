@@ -1,10 +1,13 @@
 'use client';
 import React, { useState } from 'react';
-import { CATEGORIES, CLIENTS, VISUAL_THEME } from '../constants/taskConstants';
+import { VISUAL_THEME } from '../constants/taskConstants';
 
-export default function Sidebar({ currentView, onViewChange, activeCategory, activeClient, userName, onLogout }) {
+export default function Sidebar({ 
+  currentView, onViewChange, activeCategory, activeClient, 
+  userName, onLogout, isAdmin, customCategories, clientsList 
+}) {
   const [clientsExpanded, setClientsExpanded] = useState(true);
-  const cleanName = userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'Anukant';
+  const cleanName = userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'User';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: VISUAL_THEME.sidebar, borderRight: `1px solid ${VISUAL_THEME.border}`, padding: '24px 16px', boxSizing: 'border-box' }}>
@@ -13,7 +16,7 @@ export default function Sidebar({ currentView, onViewChange, activeCategory, act
         <div style={{ width: '32px', height: '32px', background: VISUAL_THEME.accent, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontWeight: 'bold', fontSize: '18px' }}>✓</div>
         <div>
           <h2 style={{ fontSize: '15px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>Task Planner</h2>
-          <p style={{ fontSize: '11px', color: VISUAL_THEME.textSec, margin: 0 }}>by {cleanName}</p>
+          <p style={{ fontSize: '11px', color: VISUAL_THEME.textSec, margin: 0 }}>SaaS Business OS</p>
         </div>
       </div>
 
@@ -36,7 +39,7 @@ export default function Sidebar({ currentView, onViewChange, activeCategory, act
 
         <div style={{ marginTop: '20px', marginBottom: '6px', fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '12px' }}>Categories</div>
         
-        {CATEGORIES.map(c => {
+        {(customCategories || []).map(c => {
           if (c.id === 'clients') {
             const isClientsViewActive = currentView === 'category' && activeCategory === 'clients' && !activeClient;
             return (
@@ -50,7 +53,7 @@ export default function Sidebar({ currentView, onViewChange, activeCategory, act
                   </button>
                 </div>
 
-                {clientsExpanded && CLIENTS.map(cl => (
+                {clientsExpanded && (clientsList || []).map(cl => (
                   <button key={cl.id} onClick={() => onViewChange('client_workspace', 'clients', cl.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 28px', borderRadius: '6px', border: 'none', background: currentView === 'client_workspace' && activeClient === cl.id ? '#F4F4F5' : 'transparent', color: VISUAL_THEME.textSec, fontSize: '12px', cursor: 'pointer', textAlign: 'left' }}>
                     <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: VISUAL_THEME.accent }} />
                     <span>{cl.name}</span>
@@ -70,6 +73,10 @@ export default function Sidebar({ currentView, onViewChange, activeCategory, act
         <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: `1px solid ${VISUAL_THEME.border}` }}>
           <button onClick={() => onViewChange('manage_categories', null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', width: '100%', border: 'none', background: currentView === 'manage_categories' ? '#F4F4F5' : 'transparent', fontSize: '13px', color: VISUAL_THEME.textSec, cursor: 'pointer', textAlign: 'left', borderRadius: '8px' }}>📂 Manage Categories</button>
           <button onClick={() => onViewChange('notifications', null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', width: '100%', border: 'none', background: currentView === 'notifications' ? '#F4F4F5' : 'transparent', fontSize: '13px', color: VISUAL_THEME.textSec, cursor: 'pointer', textAlign: 'left', borderRadius: '8px' }}>🔔 Notifications Center</button>
+          <button onClick={() => onViewChange('profile', null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', width: '100%', border: 'none', background: currentView === 'profile' ? '#F4F4F5' : 'transparent', fontSize: '13px', color: VISUAL_THEME.textSec, cursor: 'pointer', textAlign: 'left', borderRadius: '8px' }}>👤 Profile & Billing</button>
+          {isAdmin && (
+            <button onClick={() => onViewChange('admin', null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', width: '100%', border: 'none', background: currentView === 'admin' ? '#F4F4F5' : 'transparent', fontSize: '13px', color: '#EF4444', cursor: 'pointer', textAlign: 'left', borderRadius: '8px', fontWeight: 600 }}>🛡️ Super Admin</button>
+          )}
         </div>
       </div>
 
