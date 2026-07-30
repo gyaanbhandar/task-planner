@@ -1,93 +1,112 @@
-'use client';
-import React from 'react';
-import { VISUAL_THEME } from '../constants/taskConstants';
+import React, { useState } from 'react';
 import TaskCard from './TaskCard';
 
-export default function ViewToday({
-  tasks,
-  countAll,
-  countToday,
-  countPending,
-  countCompleted,
-  dashboardFilter,
-  setDashboardFilter,
-  viewableTasksList,
-  handleToggleStatus,
-  setInspectedTask,
-  handleDeleteTask,
-  isMobile,
-  formatIndianDate,
-  userName,
-  viewTitle
-}) {
-  const getGreeting = () => {
-    const hr = new Date().getHours();
-    if (hr < 12) return 'Good morning';
-    if (hr < 17) return 'Good afternoon';
-    if (hr < 22) return 'Good evening';
-    return 'Hey, Night owl';
+export default function ViewToday({ tasks, onUpdateTask, onDeleteTask, onReorderTasks, stats, setActiveTab }) {
+  const [draggedItemId, setDraggedItemId] = useState(null);
+
+  // Drag and Drop Handlers for Desktop & Mobile Touch support
+  const handleDragStart = (e, id) => {
+    setDraggedItemId(id);
+    e.dataTransfer.setData('text/plain', id);
   };
 
-  const cleanName = userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'Anukant';
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    if (!draggedItemId || draggedItemId === targetId) return;
+    
+    const currentIndex = tasks.findIndex(t => t.id === draggedItemId);
+    const targetIndex = tasks.findIndex(t => t.id === targetId);
+    
+    if (currentIndex !== -1 && targetIndex !== -1) {
+      const updatedTasks = [...tasks];
+      const [movedItem] = updatedTasks.splice(currentIndex, 1);
+      updatedTasks.splice(targetIndex, 0, movedItem);
+      
+      if (onReorderTasks) {
+        onReorderTasks(updatedTasks);
+      }
+    }
+    setDraggedItemId(null);
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', boxSizing: 'border-box' }}>
-      <div>
-        <h1 style={{ fontSize: isMobile ? '22px' : '26px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
-          {getGreeting()}, {cleanName} 👋
-        </h1>
-        <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>{formatIndianDate()}</p>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Today's Tasks</h1>
+        <p className="text-gray-500 text-sm">Organize and prioritize your daily agenda seamlessly.</p>
       </div>
 
-      {/* Dynamic Counter Cards for Current View Context */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px' }}>
-        {[
-          { id: 'all', label: 'All Tasks', count: countAll, icon: '📋', bg: '#F1F5F9' },
-          { id: 'today', label: 'Today Tasks', count: countToday, icon: '📅', bg: '#EEF2FF' },
-          { id: 'pending', label: 'Pending Tasks', count: countPending, icon: '⏳', bg: '#FFFBEB' },
-          { id: 'completed', label: 'Completed Tasks', count: countCompleted, icon: '✅', bg: '#ECFDF5' }
-        ].map(stat => (
-          <div
-            key={stat.id}
-            onClick={() => setDashboardFilter(stat.id)}
-            style={{
-              padding: '16px',
-              background: '#FFFFFF',
-              borderRadius: '12px',
-              border: dashboardFilter === stat.id ? `2px solid ${VISUAL_THEME.accent}` : `1px solid ${VISUAL_THEME.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxSizing: 'border-box'
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: VISUAL_THEME.textSec, display: 'block', marginBottom: '4px' }}>{stat.label}</span>
-              <span style={{ fontSize: '20px', fontWeight: 700, color: VISUAL_THEME.text }}>{stat.count}</span>
-            </div>
-            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: stat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{stat.icon}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Dynamic List Section */}
-      <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '20px', boxSizing: 'border-box' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 600, color: VISUAL_THEME.text, margin: '0 0 16px 0' }}>
-          {viewTitle ? `${viewTitle} List` : 'Tasks List'}
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {viewableTasksList.length > 0 ? (
-            viewableTasksList.map(t => (
-              <TaskCard key={t.id} task={t} onToggle={handleToggleStatus} onSelectDetail={setInspectedTask} onDelete={handleDeleteTask} isMobile={isMobile} />
-            ))
-          ) : (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: VISUAL_THEME.textSec, fontSize: '13px' }}>
-              No tasks found in <strong>{viewTitle || 'this view'}</strong>. Click <strong>"+ New Task"</strong> to add one!
-            </div>
-          )}
+      {/* Top 4 Summary Cards in Requested Sequence */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* 1. Today Tasks */}
+        <div 
+          onClick={() => setActiveTab && setActiveTab('today')}
+          className="p-4 rounded-xl cursor-pointer border border-indigo-500 bg-indigo-50/20 shadow-sm transition hover:shadow-md"
+        >
+          <div className="text-sm font-medium text-gray-500">Today Tasks</div>
+          <div className="text-2xl font-bold text-indigo-600 mt-1">{stats?.todayCount || 0}</div>
         </div>
+
+        {/* 2. Pending Tasks */}
+        <div 
+          onClick={() => setActiveTab && setActiveTab('pending')}
+          className="p-4 rounded-xl cursor-pointer border border-gray-200 bg-white shadow-sm transition hover:shadow-md"
+        >
+          <div className="text-sm font-medium text-gray-500">Pending Tasks</div>
+          <div className="text-2xl font-bold text-amber-600 mt-1">{stats?.pendingCount || 0}</div>
+        </div>
+
+        {/* 3. Completed Tasks */}
+        <div 
+          onClick={() => setActiveTab && setActiveTab('completed')}
+          className="p-4 rounded-xl cursor-pointer border border-gray-200 bg-white shadow-sm transition hover:shadow-md"
+        >
+          <div className="text-sm font-medium text-gray-500">Completed Tasks</div>
+          <div className="text-2xl font-bold text-emerald-600 mt-1">{stats?.completedCount || 0}</div>
+        </div>
+
+        {/* 4. All Tasks */}
+        <div 
+          onClick={() => setActiveTab && setActiveTab('all')}
+          className="p-4 rounded-xl cursor-pointer border border-gray-200 bg-white shadow-sm transition hover:shadow-md"
+        >
+          <div className="text-sm font-medium text-gray-500">All Tasks</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{stats?.totalCount || 0}</div>
+        </div>
+      </div>
+
+      {/* Task List with Drag & Drop Support */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Tasks List (Drag & Drop to Reorder Priority)</h2>
+        
+        {tasks && tasks.length > 0 ? (
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, task.id)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, task.id)}
+                className="cursor-grab active:cursor-grabbing transition transform hover:-translate-y-0.5"
+              >
+                <TaskCard 
+                  task={task} 
+                  onUpdate={onUpdateTask} 
+                  onDelete={onDeleteTask} 
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-400">
+            No tasks found in this section. Click "+ New Task" to add one!
+          </div>
+        )}
       </div>
     </div>
   );
