@@ -35,3 +35,41 @@ export const VISUAL_THEME = {
   textSec: '#64748B',
   accent: '#6366F1'
 };
+
+// Emoji library for Icon Picker
+export const EMOJI_LIBRARY = [
+  '📋','📂','📁','📌','📎','📝','✏️','🖊️','📖','📚',
+  '💼','🏢','👤','👥','🎯','❤️','💳','🔧','⚙️','🛠️',
+  '🚀','💡','🔔','⭐','🏆','🎨','🎬','🎵','🎮','🏠',
+  '🛒','📱','💻','🖥️','📊','📈','📉','🗂️','🗃️','🗄️',
+  '📦','🎁','🔑','🔒','🔓','💎','🪙','💰','🏦','🏥',
+  '🏫','🏗️','✈️','🚗','🚢','🔬','🧪','🧬','🌍','🌱',
+  '☀️','🌙','⚡','🔥','💧','🧊','🎪','🎭','🎤','📸'
+];
+
+// Subscription Plans
+export const SUBSCRIPTION_PLANS = [
+  {
+    id: 'free',
+    name: 'Free Trial',
+    price: 0,
+    duration: '14 days',
+    features: ['Up to 50 tasks', 'Basic categories', 'Single user', 'Email support']
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 499,
+    currency: '₹',
+    duration: '/month',
+    features: ['Unlimited tasks', 'Custom categories', 'Drag & drop reorder', 'CSV/JSON export', 'Priority support', 'AI Planner']
+  },
+  {
+    id: 'business',
+    name: 'Business',
+    price: 1499,
+    currency: '₹',
+    duration: '/month',
+    features: ['Everything in Pro', 'Team collaboration', 'Client workspaces', 'Advanced analytics', 'Custom branding', 'API access']
+  }
+];
