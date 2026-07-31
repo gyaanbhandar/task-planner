@@ -41,7 +41,7 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onDelete, isMobile }
   return (
     <div ref={setNodeRef} style={style}>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '0' }}>
-        {/* Drag Handle */}
+        {/* Drag Handle - 6 dot grid */}
         <div
           {...attributes}
           {...listeners}
@@ -51,8 +51,6 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onDelete, isMobile }
             justifyContent: 'center',
             width: '28px',
             cursor: 'grab',
-            color: '#CBD5E1',
-            fontSize: '16px',
             flexShrink: 0,
             userSelect: 'none',
             touchAction: 'none',
@@ -61,7 +59,11 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onDelete, isMobile }
           }}
           title="Drag to reorder"
         >
-          та┐
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px' }}>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} style={{ width: '4px', height: '4px', borderRadius: '50%', background: isDragging ? '#6366F1' : '#CBD5E1' }} />
+            ))}
+          </div>
         </div>
         <div style={{ flex: 1 }}>
           <TaskCard
