@@ -6,17 +6,17 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const ADMIN_THEME = {
-  bg: '#0F172A',
-  surface: '#1E293B',
-  surfaceLight: '#334155',
-  border: '#475569',
-  text: '#F8FAFC',
-  textSec: '#94A3B8',
-  accent: '#818CF8',
-  accentBg: 'rgba(129,140,248,0.15)',
-  danger: '#F87171',
-  success: '#34D399',
-  warning: '#FBBF24'
+  bg: '#F8FAFC',
+  surface: '#FFFFFF',
+  surfaceLight: '#F1F5F9',
+  border: '#E2E8F0',
+  text: '#0F172A',
+  textSec: '#64748B',
+  accent: '#6366F1',
+  accentBg: 'rgba(99,102,241,0.08)',
+  danger: '#EF4444',
+  success: '#10B981',
+  warning: '#F59E0B'
 };
 
 export default function SuperAdminPanel() {
@@ -110,7 +110,7 @@ export default function SuperAdminPanel() {
   if (!session) {
     return (
       <div style={{ minHeight: '100vh', background: ADMIN_THEME.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Inter', sans-serif", padding: '20px' }}>
-        <div style={{ background: ADMIN_THEME.surface, borderRadius: '20px', padding: '40px 32px', width: '100%', maxWidth: '380px', border: `1px solid ${ADMIN_THEME.border}` }}>
+        <div style={{ background: ADMIN_THEME.surface, borderRadius: '20px', padding: '40px 32px', width: '100%', maxWidth: '380px', border: `1px solid ${ADMIN_THEME.border}`, boxShadow: '0 20px 40px rgba(0,0,0,0.06)' }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             <div style={{ fontSize: '36px', marginBottom: '12px' }}>🛡️</div>
             <h1 style={{ fontSize: '22px', fontWeight: 700, color: ADMIN_THEME.text, margin: '0 0 4px' }}>Admin Access</h1>
@@ -119,7 +119,7 @@ export default function SuperAdminPanel() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <input type="email" placeholder="Admin Email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `1px solid ${ADMIN_THEME.border}`, background: ADMIN_THEME.surfaceLight, color: ADMIN_THEME.text, fontSize: '14px', boxSizing: 'border-box' }} />
             <input type="password" placeholder="Password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: `1px solid ${ADMIN_THEME.border}`, background: ADMIN_THEME.surfaceLight, color: ADMIN_THEME.text, fontSize: '14px', boxSizing: 'border-box' }} />
-            {loginError && <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(248,113,113,0.1)', color: ADMIN_THEME.danger, fontSize: '13px' }}>{loginError}</div>}
+            {loginError && <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', color: ADMIN_THEME.danger, fontSize: '13px' }}>{loginError}</div>}
             <button onClick={handleLogin} disabled={loginLoading} style={{ padding: '14px', background: ADMIN_THEME.accent, color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', opacity: loginLoading ? 0.6 : 1 }}>
               {loginLoading ? 'Verifying...' : 'Login to Admin Panel'}
             </button>
