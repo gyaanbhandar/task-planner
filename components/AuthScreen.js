@@ -16,7 +16,8 @@ export default function AuthScreen({ onLogin }) {
     setError(''); 
     setSuccess('');
     if (!email || !password) { setError('Email aur password dono daalo'); return; }
-    if (!isLogin && !name) { setError('Naam daalo'); return; }
+    if (!isLogin && !name.trim()) { setError('Name zaroori hai — apna naam daalo'); return; }
+    if (!isLogin && name.trim().length < 2) { setError('Naam kam se kam 2 characters ka hona chahiye'); return; }
     setLoading(true);
     
     if (isLogin) {
@@ -25,12 +26,20 @@ export default function AuthScreen({ onLogin }) {
       onLogin(data.session);
     } else {
       const { data, error: err } = await authService.signUp(email, password, name);
-      if (err) { setError(err.message); setLoading(false); return; }
-      if (data.session) { 
+      if (err) { 
+        const msg = typeof err.message === 'string' ? err.message : (err.msg || err.error_description || JSON.stringify(err) || 'Signup failed — try different email/password');
+        setError(msg === '{}' ? 'Signup failed — email already registered ya password weak hai (min 6 chars)' : msg); 
+        setLoading(false); 
+        return; 
+      }
+      if (data?.session) { 
         onLogin(data.session); 
-      } else { 
-        setSuccess('Verification email bheja hai — inbox check karo.'); 
+      } else if (data?.user && !data?.session) {
+        setSuccess('Account bana! Verification email bheja hai — inbox check karo.'); 
         setIsLogin(true); 
+      } else {
+        setSuccess('Account created! Ab Login tab se login karo.');
+        setIsLogin(true);
       }
     }
     setLoading(false);
