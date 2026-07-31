@@ -20,6 +20,7 @@ export default function ViewToday({
   isMobile,
   formatIndianDate,
   userName,
+  userFullName,
   viewTitle
 }) {
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -32,7 +33,7 @@ export default function ViewToday({
     return 'Hey, Night owl';
   };
 
-  const cleanName = userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'User';
+  const cleanName = userFullName || (userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'User');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', boxSizing: 'border-box' }}>
@@ -138,7 +139,7 @@ export default function ViewToday({
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: VISUAL_THEME.text, margin: 0 }}>
             {viewTitle ? `${viewTitle} List` : 'Tasks List'}
           </h3>
-          <span style={{ fontSize: '11px', color: VISUAL_THEME.textSec }}>⠿ Drag to reorder</span>
+          <span style={{ fontSize: '11px', color: VISUAL_THEME.textSec }}>⋮⋮ Drag to reorder</span>
         </div>
         
         <DraggableTaskList
