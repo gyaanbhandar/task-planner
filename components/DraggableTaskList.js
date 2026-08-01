@@ -18,7 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import TaskCard from './TaskCard';
 import { VISUAL_THEME } from '../constants/taskConstants';
 
-function SortableTaskItem({ task, onToggle, onSelectDetail, onDelete, isMobile }) {
+function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, isMobile }) {
   const {
     attributes,
     listeners,
@@ -68,6 +68,7 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onDelete, isMobile }
             task={task}
             onToggle={onToggle}
             onSelectDetail={onSelectDetail}
+            onEdit={onEdit}
             onDelete={onDelete}
             isMobile={isMobile}
           />
@@ -82,6 +83,7 @@ export default function DraggableTaskList({
   onReorder,
   onToggle,
   onSelectDetail,
+  onEdit,
   onDelete,
   isMobile,
   emptyMessage
@@ -119,6 +121,7 @@ export default function DraggableTaskList({
               task={task}
               onToggle={onToggle}
               onSelectDetail={onSelectDetail}
+              onEdit={onEdit}
               onDelete={onDelete}
               isMobile={isMobile}
             />
