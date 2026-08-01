@@ -1,21 +1,21 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { VISUAL_THEME, CATEGORIES, CLIENTS, PRIORITY_CONFIG } from '../constants/taskConstants';
-import { todayStr, formatIndianDate } from '../utils/dateUtils';
-import Sidebar from '../components/Sidebar';
-import AuthScreen from '../components/AuthScreen';
-import IconPicker from '../components/IconPicker';
-import { authService } from '../services/authService';
-import { taskService } from '../services/taskService';
-import { notificationService } from '../services/notificationService';
-import { useTasks } from '../hooks/useTasks';
+import { VISUAL_THEME, CATEGORIES, CLIENTS, PRIORITY_CONFIG } from '../../constants/taskConstants';
+import { todayStr, formatIndianDate } from '../../utils/dateUtils';
+import Sidebar from '../../components/Sidebar';
+import AuthScreen from '../../components/AuthScreen';
+import IconPicker from '../../components/IconPicker';
+import { authService } from '../../services/authService';
+import { taskService } from '../../services/taskService';
+import { notificationService } from '../../services/notificationService';
+import { useTasks } from '../../hooks/useTasks';
 
-import ViewToday from '../components/ViewToday';
-import ViewCalendar from '../components/ViewCalendar';
-import ViewAllTasks from '../components/ViewAllTasks';
-import ViewRecurring from '../components/ViewRecurring';
-import ViewSettings from '../components/ViewSettings';
+import ViewToday from '../../components/ViewToday';
+import ViewCalendar from '../../components/ViewCalendar';
+import ViewAllTasks from '../../components/ViewAllTasks';
+import ViewRecurring from '../../components/ViewRecurring';
+import ViewSettings from '../../components/ViewSettings';
 
 const convert12to24 = (time12) => {
   if (!time12) return '09:00';
