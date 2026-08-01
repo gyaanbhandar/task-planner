@@ -2,7 +2,7 @@
 import React from 'react';
 import { VISUAL_THEME } from '../constants/taskConstants';
 
-export default function ViewRecurring({ tasks, setInspectedTask, handleDeleteTask }) {
+export default function ViewRecurring({ tasks, setInspectedTask, onViewDetail, handleDeleteTask }) {
   const recurringItems = tasks.filter(t => t.type !== 'one-time' || t.time);
 
   return (
@@ -13,7 +13,7 @@ export default function ViewRecurring({ tasks, setInspectedTask, handleDeleteTas
           <div key={t.id + '_rec'} style={{ padding: '16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.borderAlt}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span style={{ fontSize: '18px' }}>🔄</span>
-              <div>
+              <div style={{ cursor: 'pointer' }} onClick={() => onViewDetail(t)}>
                 <h4 style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: VISUAL_THEME.text }}>{t.title}</h4>
                 <p style={{ fontSize: '11px', color: VISUAL_THEME.textSec, margin: '4px 0 0 0' }}>Routine Type: Custom cycle mapped target to execution window at {t.time || '09:00 AM'}</p>
               </div>
