@@ -68,6 +68,7 @@ export default function ModernTaskPlannerOS() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inspectedTask, setInspectedTask] = useState(null);
   const [editTime, setEditTime] = useState('09:00');
+  const [viewDetailTask, setViewDetailTask] = useState(null);
   
   const [customCategories, setCustomCategories] = useState(CATEGORIES);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -343,11 +344,11 @@ export default function ModernTaskPlannerOS() {
         <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px' }}>
           
           {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} viewTitle={activeViewTitle} />
+            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} viewTitle={activeViewTitle} />
           )}
 
           {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={handleSelectInspectedTask} />}
-          {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} />}
+          {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={handleSelectInspectedTask} onViewDetail={setViewDetailTask} handleDeleteTask={handleDeleteTask} />}
           {currentView === 'settings' && <ViewSettings session={session} />}
           
           {currentView === 'manage_categories' && (
@@ -411,6 +412,80 @@ export default function ModernTaskPlannerOS() {
           )}
         </div>
       </div>
+
+      {/* VIEW TASK DETAILS PANEL (Read-Only) */}
+      {viewDetailTask && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setViewDetailTask(null)} />
+          <div style={{ width: isMobile ? '100vw' : '440px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '28px 24px', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)', boxSizing: 'border-box', overflowY: 'auto' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: VISUAL_THEME.text }}>Task Details</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button onClick={() => { handleSelectInspectedTask(viewDetailTask); setViewDetailTask(null); }} style={{ width: '38px', height: '38px', border: `1.5px solid ${VISUAL_THEME.accent}`, background: '#FFFFFF', borderRadius: '10px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: VISUAL_THEME.accent }} title="Edit Task">✏️</button>
+                <button onClick={() => setViewDetailTask(null)} style={{ width: '38px', height: '38px', border: 'none', background: '#F1F5F9', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>✕</button>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div style={{ fontSize: '20px', fontWeight: 700, color: VISUAL_THEME.text, lineHeight: 1.4, marginBottom: '8px' }}>{viewDetailTask.title}</div>
+
+            {/* Description */}
+            <div style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: '28px' }}>{viewDetailTask.description || 'No description'}</div>
+
+            {/* Detail Rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+              {/* Category */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{(() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.icon : '📂'; })()}</span>
+                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Category</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, padding: '4px 12px', borderRadius: '6px', background: (() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.bg : '#EEF2FF'; })(), color: (() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.color : VISUAL_THEME.accent; })() }}>{(() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.name : viewDetailTask.category || '—'; })()}</span>
+              </div>
+
+              {/* Client */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>👤</span>
+                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Client</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{viewDetailTask.subcategory || 'General'}</span>
+              </div>
+
+              {/* Priority */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{PRIORITY_CONFIG[viewDetailTask.priority]?.icon || '🔸'}</span>
+                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Priority</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, padding: '4px 12px', borderRadius: '6px', background: PRIORITY_CONFIG[viewDetailTask.priority]?.bg || '#FEF3C7', color: PRIORITY_CONFIG[viewDetailTask.priority]?.color || '#F59E0B' }}>{(viewDetailTask.priority || 'medium').charAt(0).toUpperCase() + (viewDetailTask.priority || 'medium').slice(1)}</span>
+              </div>
+
+              {/* Frequency */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>🔄</span>
+                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Frequency</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{viewDetailTask.type === 'one-time' ? 'One-Time' : viewDetailTask.type === 'daily' ? 'Daily' : viewDetailTask.type === 'weekly' ? 'Weekly' : viewDetailTask.type === 'monthly' ? 'Monthly' : viewDetailTask.type || 'One-Time'}</span>
+              </div>
+
+              {/* Date */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>📅</span>
+                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Date</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{(() => { if (!viewDetailTask.deadline) return 'No Date'; try { const d = new Date(viewDetailTask.deadline + 'T00:00:00'); const day = String(d.getDate()).padStart(2,'0'); const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; return `${day} ${months[d.getMonth()]} ${d.getFullYear()} (${days[d.getDay()]})`; } catch(e) { return viewDetailTask.deadline; } })()}</span>
+              </div>
+
+              {/* Time */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>🕐</span>
+                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Time</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{viewDetailTask.time || '09:00 AM'}</span>
+              </div>
+            </div>
+
+            {/* Footer: Mark Complete + Edit Task */}
+            <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: `1px solid ${VISUAL_THEME.border}`, marginTop: '24px' }}>
+              <button onClick={async () => { await handleToggleStatus(viewDetailTask.id, viewDetailTask.status); await loadTasks(); setViewDetailTask(null); }} style={{ flex: 1, padding: '13px', background: '#FFFFFF', color: viewDetailTask.status === 'done' ? '#D97706' : '#059669', border: `1.5px solid ${viewDetailTask.status === 'done' ? '#D97706' : '#059669'}`, borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>{viewDetailTask.status === 'done' ? '↩️ Mark Incomplete' : '✓ Mark Complete'}</button>
+              <button onClick={() => { handleSelectInspectedTask(viewDetailTask); setViewDetailTask(null); }} style={{ flex: 1, padding: '13px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>✏️ Edit Task</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* EDIT DRAWER */}
       {inspectedTask && (
