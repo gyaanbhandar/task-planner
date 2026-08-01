@@ -66,6 +66,7 @@ export default function ModernTaskPlannerOS() {
 
   const [aiPlanOutput, setAiPlanOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [notifPopupTask, setNotifPopupTask] = useState(null);
 
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
@@ -152,6 +153,8 @@ export default function ModernTaskPlannerOS() {
               });
             }
             notificationService.send(`⏰ Task Reminder: ${t.title}`, `${t.time} • ${t.subcategory || 'General'}`);
+            // Show in-app detail popup
+            setNotifPopupTask({ ...t });
           }
         }
       });
@@ -384,7 +387,7 @@ export default function ModernTaskPlannerOS() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Task Title</label><input type="text" value={inspectedTask.title || ''} onChange={e => setInspectedTask({ ...inspectedTask, title: e.target.value })} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }} /></div>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Description</label><textarea placeholder="Add notes..." value={(inspectedTask.description || '').replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '').trim()} onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '70px', resize: 'none', fontSize: '13px', boxSizing: 'border-box' }} /></div>
+              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Description</label><textarea placeholder="Add notes..." value={inspectedTask.description || ''} onChange={e => setInspectedTask({ ...inspectedTask, description: e.target.value })} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', height: '70px', resize: 'none', fontSize: '13px', boxSizing: 'border-box' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Category</label><select value={inspectedTask.category || 'personal'} onChange={e => setInspectedTask({ ...inspectedTask, category: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }}>{customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></div>
                 <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Client</label><select value={inspectedTask.subcategory || 'General'} onChange={e => setInspectedTask({ ...inspectedTask, subcategory: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '13px', boxSizing: 'border-box' }}><option value="General">General</option>{clientsList.map(cl => <option key={cl.id} value={cl.name}>🏢 {cl.name}</option>)}</select></div>
@@ -404,6 +407,57 @@ export default function ModernTaskPlannerOS() {
       )}
 
       {/* CREATE MODAL */}
+      {/* NOTIFICATION DETAIL POPUP */}
+      {notifPopupTask && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(6px)' }} onClick={e => { if(e.target === e.currentTarget) setNotifPopupTask(null); }}>
+          <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '0', width: '100%', maxWidth: '420px', boxShadow: '0 25px 60px rgba(0,0,0,0.15)', overflow: 'hidden', animation: 'notifSlideIn 0.3s ease-out' }}>
+            <div style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', padding: '24px 24px 20px', color: '#FFFFFF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏰</div>
+                <button onClick={() => setNotifPopupTask(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', color: '#FFF', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0' }}>Task Reminder</h3>
+              <p style={{ fontSize: '13px', margin: 0, opacity: 0.85 }}>Aapke task ka time aa gaya hai!</p>
+            </div>
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', marginBottom: '4px' }}>Task Title</div>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>{notifPopupTask.title}</div>
+              </div>
+              {notifPopupTask.description && (
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', marginBottom: '4px' }}>Description</div>
+                  <div style={{ fontSize: '14px', color: '#475569', lineHeight: 1.5 }}>{notifPopupTask.description}</div>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Time</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>🕐 {notifPopupTask.time || '—'}</div>
+                </div>
+                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Priority</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>{notifPopupTask.priority === 'high' ? '🔺 High' : notifPopupTask.priority === 'medium' ? '🔸 Medium' : '🔹 Low'}</div>
+                </div>
+                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Category</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>{(() => { const c = customCategories.find(cat => cat.id === notifPopupTask.category); return c ? `${c.icon} ${c.name}` : notifPopupTask.category || '—'; })()}</div>
+                </div>
+                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Client</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>{notifPopupTask.subcategory || 'General'}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <button onClick={async () => { await handleToggleStatus(notifPopupTask.id, notifPopupTask.status); await loadTasks(); setNotifPopupTask(null); }} style={{ flex: 1, padding: '12px', background: '#16A34A', color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }}>✅ Mark Done</button>
+                <button onClick={() => setNotifPopupTask(null)} style={{ flex: 1, padding: '12px', background: '#F1F5F9', color: '#64748B', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }}>Dismiss</button>
+              </div>
+            </div>
+          </div>
+          <style>{`@keyframes notifSlideIn { from { transform: scale(0.9) translateY(-20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }`}</style>
+        </div>
+      )}
+
       {showCreateModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)' }} onClick={e => { if(e.target === e.currentTarget) setShowCreateModal(false); }}>
           <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
