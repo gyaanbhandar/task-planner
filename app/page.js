@@ -105,6 +105,13 @@ export default function ModernTaskPlannerOS() {
     if (session) loadTasks();
   }, [session, loadTasks]);
 
+  // Request notification permission on app load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   const handleSelectInspectedTask = (task) => {
     setInspectedTask(task);
     if (!task) return;
@@ -140,17 +147,31 @@ export default function ModernTaskPlannerOS() {
       currentHour = currentHour % 12 || 12;
       const currentTimeString = `${String(currentHour).padStart(2, '0')}:${currentMinute} ${period}`;
       tasks.forEach(t => {
-        if (t.status === 'pending' && (t.deadline === todayStr() || t.type === 'daily') && (t.time || '').toLowerCase() === currentTimeString.toLowerCase()) {
-          if (!notifiedTasksRef.current.has(t.id)) {
+        if (t.status === 'pending' && (t.deadline === todayStr() || t.type === 'daily')) {
+          const taskTime = (t.time || '').trim().toUpperCase();
+          const nowTime = currentTimeString.toUpperCase();
+          if (taskTime === nowTime && !notifiedTasksRef.current.has(t.id)) {
             notifiedTasksRef.current.add(t.id);
             playChimeSound();
-            // Send actual Windows/Mac notification popup
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(`⏰ Task Reminder: ${t.title}`, {
-                body: `${t.time} • ${t.subcategory || 'General'}`,
-                icon: '⚡',
-                tag: `task-${t.id}`
-              });
+            // Send Windows/Mac notification — request permission if needed
+            if ('Notification' in window) {
+              const sendNotif = () => {
+                if (Notification.permission === 'granted') {
+                  try {
+                    new Notification('⏰ Task Planner Reminder', {
+                      body: `${t.title}\n${t.time} • ${t.subcategory || 'General'}`,
+                      tag: `task-${t.id}`,
+                      requireInteraction: true,
+                      silent: false
+                    });
+                  } catch(e) { console.log('Notification error:', e); }
+                }
+              };
+              if (Notification.permission === 'granted') {
+                sendNotif();
+              } else if (Notification.permission === 'default') {
+                Notification.requestPermission().then(p => { if (p === 'granted') sendNotif(); });
+              }
             }
             notificationService.send(`⏰ Task Reminder: ${t.title}`, `${t.time} • ${t.subcategory || 'General'}`);
             // Show in-app detail popup
@@ -158,7 +179,7 @@ export default function ModernTaskPlannerOS() {
           }
         }
       });
-    }, 20000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [tasks]);
 
