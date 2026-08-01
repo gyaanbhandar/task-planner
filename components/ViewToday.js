@@ -15,6 +15,7 @@ export default function ViewToday({
   viewableTasksList,
   handleToggleStatus,
   setInspectedTask,
+  onEdit,
   handleDeleteTask,
   handleReorderTasks,
   isMobile,
@@ -147,6 +148,7 @@ export default function ViewToday({
           onReorder={handleReorderTasks}
           onToggle={handleToggleStatus}
           onSelectDetail={setInspectedTask}
+          onEdit={onEdit}
           onDelete={handleDeleteTask}
           isMobile={isMobile}
           emptyMessage={`No tasks found in ${viewTitle || 'this view'}. Click "+ New Task" to add one!`}
