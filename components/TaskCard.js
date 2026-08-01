@@ -2,7 +2,7 @@
 import React from 'react';
 import { VISUAL_THEME, PRIORITY_CONFIG } from '../constants/taskConstants';
 
-export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isMobile }) {
+export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDelete, isMobile }) {
   const priorityStyle = PRIORITY_CONFIG[task?.priority?.toLowerCase()] || 
                         PRIORITY_CONFIG[task?.priority] || 
                         PRIORITY_CONFIG.medium || 
@@ -43,7 +43,7 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
         <input 
           type="checkbox" 
           checked={task.status === 'done'} 
-          onChange={() => onToggle(task.id, task.status)}
+          onChange={(e) => { e.stopPropagation(); onToggle(task.id, task.status); }}
           style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: VISUAL_THEME.accent, marginTop: '2px', flexShrink: 0 }}
         />
         
@@ -88,12 +88,21 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
         </div>
 
         {isMobile && (
-          <button 
-            onClick={() => onDelete(task.id)} 
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '0 4px', flexShrink: 0 }}
-          >
-            🗑️
-          </button>
+          <>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(task); }} 
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '0 4px', flexShrink: 0 }}
+              title="Edit Task"
+            >
+              ✏️
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} 
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '0 4px', flexShrink: 0 }}
+            >
+              🗑️
+            </button>
+          </>
         )}
       </div>
 
@@ -120,12 +129,21 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onDelete, isM
         </div>
 
         {!isMobile && (
-          <button 
-            onClick={() => onDelete(task.id)} 
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}
-          >
-            🗑️
-          </button>
+          <>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(task); }} 
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}
+              title="Edit Task"
+            >
+              ✏️
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} 
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}
+            >
+              🗑️
+            </button>
+          </>
         )}
       </div>
     </div>
