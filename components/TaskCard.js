@@ -20,6 +20,7 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDel
   const displayTime = getFormattedTime();
   
   const cleanDesc = (task.description || '')
+    .replace(/<[^>]*>/g, '')
     .replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '')
     .trim();
 
