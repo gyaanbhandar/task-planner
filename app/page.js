@@ -428,10 +428,30 @@ export default function ModernTaskPlannerOS() {
             </div>
 
             {/* Title */}
-            <div style={{ fontSize: '20px', fontWeight: 700, color: VISUAL_THEME.text, lineHeight: 1.4, marginBottom: '8px' }}>{viewDetailTask.title}</div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: VISUAL_THEME.text, lineHeight: 1.4, marginBottom: '8px', wordBreak: 'break-word' }}>{viewDetailTask.title}</div>
 
-            {/* Description */}
-            <div style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: '28px' }}>{viewDetailTask.description || 'No description'}</div>
+            {/* Description - renders HTML with clickable links */}
+            <div style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.8, marginBottom: '28px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+              {(() => {
+                const desc = viewDetailTask.description || 'No description';
+                // Check if description contains HTML tags
+                if (/<[a-z][\s\S]*>/i.test(desc)) {
+                  return <div dangerouslySetInnerHTML={{ __html: desc }} style={{ lineHeight: 1.8 }} />;
+                }
+                // Fallback: plain text with auto-linked URLs
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const parts = desc.split(urlRegex);
+                return parts.map((part, i) => urlRegex.test(part) 
+                  ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: VISUAL_THEME.accent, textDecoration: 'underline', wordBreak: 'break-all' }}>{part}</a> 
+                  : part
+                );
+              })()}
+            </div>
+            <style dangerouslySetInnerHTML={{__html: `
+              .view-detail-desc a { color: ${VISUAL_THEME.accent}; text-decoration: underline; word-break: break-all; }
+              .view-detail-desc ul, .view-detail-desc ol { margin: 4px 0; padding-left: 20px; }
+              .view-detail-desc li { margin: 2px 0; }
+            `}} />
 
             {/* Detail Rows */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
