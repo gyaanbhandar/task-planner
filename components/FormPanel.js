@@ -164,12 +164,115 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
 
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Description</label>
-            <textarea 
-              placeholder="Add details..." 
-              value={localForm.description} 
-              onChange={e => setLocalForm({ ...localForm, description: e.target.value })} 
-              style={{ width: '100%', height: '80px', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', resize: 'none', boxSizing: 'border-box' }}
+            {/* Rich Text Toolbar */}
+            <div style={{ display: 'flex', gap: '2px', padding: '6px 8px', background: '#F1F5F9', borderRadius: '12px 12px 0 0', border: `1px solid ${VISUAL_THEME.border}`, borderBottom: 'none', flexWrap: 'wrap' }}>
+              {[
+                { cmd: 'bold', icon: 'B', title: 'Bold', style: { fontWeight: 700 } },
+                { cmd: 'italic', icon: 'I', title: 'Italic', style: { fontStyle: 'italic' } },
+                { cmd: 'underline', icon: 'U', title: 'Underline', style: { textDecoration: 'underline' } },
+                { cmd: 'strikeThrough', icon: 'S', title: 'Strikethrough', style: { textDecoration: 'line-through' } },
+              ].map(btn => (
+                <button
+                  key={btn.cmd}
+                  type="button"
+                  title={btn.title}
+                  onMouseDown={(e) => { e.preventDefault(); document.execCommand(btn.cmd, false, null); }}
+                  style={{ width: '30px', height: '28px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '6px', fontSize: '13px', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', ...btn.style }}
+                  onMouseEnter={e => e.target.style.background = '#E2E8F0'}
+                  onMouseLeave={e => e.target.style.background = 'transparent'}
+                >
+                  {btn.icon}
+                </button>
+              ))}
+              <div style={{ width: '1px', background: '#CBD5E1', margin: '2px 4px' }} />
+              <button
+                type="button"
+                title="Insert Link"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const sel = window.getSelection();
+                  const selectedText = sel.toString();
+                  const url = prompt('Enter URL:', 'https://');
+                  if (url) {
+                    if (selectedText) {
+                      document.execCommand('createLink', false, url);
+                      // Make link open in new tab
+                      setTimeout(() => {
+                        const editorEl = document.getElementById('desc-editor');
+                        if (editorEl) {
+                          editorEl.querySelectorAll('a').forEach(a => {
+                            a.setAttribute('target', '_blank');
+                            a.setAttribute('rel', 'noopener noreferrer');
+                          });
+                        }
+                      }, 0);
+                    } else {
+                      const linkText = prompt('Link text:', url);
+                      document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText || url}</a>`);
+                    }
+                  }
+                }}
+                style={{ width: '30px', height: '28px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '6px', fontSize: '14px', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onMouseEnter={e => e.target.style.background = '#E2E8F0'}
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+              >
+                🔗
+              </button>
+              <button
+                type="button"
+                title="Remove Link"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('unlink', false, null); }}
+                style={{ width: '30px', height: '28px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '6px', fontSize: '12px', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'line-through' }}
+                onMouseEnter={e => e.target.style.background = '#E2E8F0'}
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+              >
+                🔗
+              </button>
+              <div style={{ width: '1px', background: '#CBD5E1', margin: '2px 4px' }} />
+              <button
+                type="button"
+                title="Bullet List"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertUnorderedList', false, null); }}
+                style={{ width: '30px', height: '28px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '6px', fontSize: '13px', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onMouseEnter={e => e.target.style.background = '#E2E8F0'}
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+              >
+                •≡
+              </button>
+              <button
+                type="button"
+                title="Numbered List"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('insertOrderedList', false, null); }}
+                style={{ width: '30px', height: '28px', border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: '6px', fontSize: '13px', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onMouseEnter={e => e.target.style.background = '#E2E8F0'}
+                onMouseLeave={e => e.target.style.background = 'transparent'}
+              >
+                1.
+              </button>
+            </div>
+            {/* Rich Text Editor Area */}
+            <div
+              id="desc-editor"
+              contentEditable
+              suppressContentEditableWarning
+              onInput={(e) => setLocalForm(prev => ({ ...prev, description: e.currentTarget.innerHTML }))}
+              onPaste={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                // Auto-detect URLs in pasted text and make them clickable
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const html = text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+                document.execCommand('insertHTML', false, html);
+              }}
+              dangerouslySetInnerHTML={{ __html: localForm.description || '' }}
+              style={{ width: '100%', minHeight: '90px', maxHeight: '160px', overflowY: 'auto', padding: '14px 16px', borderRadius: '0 0 12px 12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box', lineHeight: 1.6, outline: 'none', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
             />
+            <style dangerouslySetInnerHTML={{__html: `
+              #desc-editor a { color: ${VISUAL_THEME.accent}; text-decoration: underline; cursor: pointer; word-break: break-all; }
+              #desc-editor ul, #desc-editor ol { margin: 4px 0; padding-left: 20px; }
+              #desc-editor li { margin: 2px 0; }
+              #desc-editor:empty::before { content: 'Add details, links, notes...'; color: #94A3B8; pointer-events: none; }
+            `}} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobileDevice ? '1fr' : '1fr 1fr', gap: '14px' }}>
