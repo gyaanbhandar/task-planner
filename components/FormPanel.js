@@ -258,14 +258,31 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
               onInput={(e) => setLocalForm(prev => ({ ...prev, description: e.currentTarget.innerHTML }))}
               onPaste={(e) => {
                 e.preventDefault();
-                const text = e.clipboardData.getData('text/plain');
-                // Auto-detect URLs in pasted text and make them clickable
-                const urlRegex = /(https?:\/\/[^\s]+)/g;
-                const html = text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
-                document.execCommand('insertHTML', false, html);
+                // Try HTML first to preserve formatting (bold, italic, bullets from docs)
+                const htmlData = e.clipboardData.getData('text/html');
+                const plainData = e.clipboardData.getData('text/plain');
+                if (htmlData) {
+                  const temp = document.createElement('div');
+                  temp.innerHTML = htmlData;
+                  temp.querySelectorAll('style, meta, link, script, title').forEach(el => el.remove());
+                  const cleanNode = (node) => {
+                    if (node.nodeType !== 1) return;
+                    if (node.tagName === 'GOOGLE-SHEETS-HTML-ORIGIN' || node.tagName === 'META') { node.remove(); return; }
+                    const attrs = Array.from(node.attributes);
+                    attrs.forEach(attr => { if (attr.name !== 'href' && attr.name !== 'colspan' && attr.name !== 'rowspan') node.removeAttribute(attr.name); });
+                    if (node.tagName === 'A') { node.setAttribute('target', '_blank'); node.setAttribute('rel', 'noopener noreferrer'); }
+                    Array.from(node.children).forEach(cleanNode);
+                  };
+                  cleanNode(temp);
+                  document.execCommand('insertHTML', false, temp.innerHTML);
+                } else if (plainData) {
+                  const urlRegex = /(https?:\/\/[^\s]+)/g;
+                  const html = plainData.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\n/g,'<br>');
+                  document.execCommand('insertHTML', false, html);
+                }
               }}
               dangerouslySetInnerHTML={{ __html: localForm.description || '' }}
-              style={{ width: '100%', minHeight: '90px', maxHeight: '160px', overflowY: 'auto', padding: '14px 16px', borderRadius: '0 0 12px 12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box', lineHeight: 1.6, outline: 'none', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+              style={{ width: '100%', minHeight: '120px', maxHeight: '45vh', overflowY: 'auto', padding: '16px 18px', borderRadius: '0 0 12px 12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#FFFFFF', boxSizing: 'border-box', lineHeight: 1.7, outline: 'none', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
             />
             <style dangerouslySetInnerHTML={{__html: `
               #desc-editor a { color: ${VISUAL_THEME.accent}; text-decoration: underline; cursor: pointer; word-break: break-all; }
