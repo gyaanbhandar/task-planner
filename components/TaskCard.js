@@ -90,30 +90,13 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDel
           </div>
         </div>
 
-        {isMobile && (
-          <>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onEdit(task); }} 
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '0 4px', flexShrink: 0 }}
-              title="Edit Task"
-            >
-              ✏️
-            </button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} 
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '0 4px', flexShrink: 0 }}
-            >
-              🗑️
-            </button>
-          </>
-        )}
       </div>
 
       <div 
         style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: isMobile ? 'space-between' : 'flex-end', 
+          justifyContent: 'space-between', 
           gap: '10px', 
           flexShrink: 0,
           paddingTop: isMobile ? '8px' : '0',
@@ -131,23 +114,21 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDel
           </span>
         </div>
 
-        {!isMobile && (
-          <>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onEdit(task); }} 
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}
-              title="Edit Task"
-            >
-              ✏️
-            </button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} 
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6 }}
-            >
-              🗑️
-            </button>
-          </>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onEdit(task); }} 
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '4px' }}
+            title="Edit Task"
+          >
+            ✏️
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} 
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '4px' }}
+          >
+            🗑️
+          </button>
+        </div>
       </div>
     </div>
   );
