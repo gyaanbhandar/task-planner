@@ -38,7 +38,7 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, is
 
   return (
     <div ref={setNodeRef} style={style}>
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: '0' }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: '0', maxWidth: '100%', overflow: 'hidden' }}>
         {/* Drag Handle - 6 dot grid */}
         <div
           {...attributes}
@@ -63,7 +63,7 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, is
             ))}
           </div>
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <TaskCard
             task={task}
             onToggle={onToggle}
