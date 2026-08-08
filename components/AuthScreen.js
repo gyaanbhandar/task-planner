@@ -52,9 +52,23 @@ export default function AuthScreen({ onLogin }) {
       <div style={{ background: '#FFFFFF', borderRadius: '24px', padding: '40px 32px', width: '100%', maxWidth: '380px', border: `1px solid ${VISUAL_THEME.border}`, boxShadow: '0 20px 40px rgba(0,0,0,0.03)' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px', display: 'inline-block' }}>⚡</div>
-          <h1 style={{ margin: 0, fontSize: '24px', color: VISUAL_THEME.text, fontWeight: 700, letterSpacing: '-0.5px' }}>Task Planner</h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: VISUAL_THEME.textSec, fontWeight: 400 }}>SaaS Business OS</p>
+          <div style={{ marginBottom: '12px', display: 'inline-block' }}>
+            <svg viewBox="0 0 120 120" width="56" height="56" xmlns="http://www.w3.org/2000/svg">
+              <rect width="120" height="120" rx="22" fill="#6366F1"/>
+              <path d="M30 78L50 42L60 58L70 42L90 78" stroke="#fff" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M52 72L65 52L78 72" stroke="#fff" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <g transform="translate(60,30)">
+                <circle r="3" fill="#FF8A00"/>
+                <line x1="0" y1="-6" x2="0" y2="-10" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+                <line x1="5.2" y1="-3" x2="8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+                <line x1="5.2" y1="3" x2="8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+                <line x1="-5.2" y1="-3" x2="-8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+                <line x1="-5.2" y1="3" x2="-8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+              </g>
+            </svg>
+          </div>
+          <h1 style={{ margin: 0, fontSize: '24px', color: '#312E81', fontWeight: 700, letterSpacing: '-0.5px' }}>AnutTask</h1>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: VISUAL_THEME.textSec, fontWeight: 400 }}>Smart SaaS OS by Anukant</p>
         </div>
 
         <div style={{ display: 'flex', marginBottom: '28px', background: '#F4F4F5', borderRadius: '30px', padding: '4px', border: `1px solid ${VISUAL_THEME.border}` }}>

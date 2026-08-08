@@ -40,7 +40,7 @@ const convert24to12 = (time24) => {
   return `${String(hour).padStart(2, '0')}:${min} ${period}`;
 };
 
-export default function ModernTaskPlannerOS() {
+export default function AnutTaskOS() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   
@@ -160,7 +160,7 @@ export default function ModernTaskPlannerOS() {
     return () => clearInterval(interval);
   }, [tasks]);
 
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading Task Planner...</div>;
+  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading AnutTask...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 
   const getViewTitle = () => {
@@ -180,7 +180,7 @@ export default function ModernTaskPlannerOS() {
       const clientObj = clientsList.find(c => c.id === activeClient);
       return clientObj ? clientObj.name : "Client Workspace";
     }
-    return "Task Planner";
+    return "AnutTask";
   };
 
   const handleCreateTaskSubmit = async () => {

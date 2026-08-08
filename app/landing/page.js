@@ -11,8 +11,13 @@ export default function LandingPage() {
       {/* Nav */}
       <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 32px', maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '32px', height: '32px', background: ACCENT, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF', fontWeight: 'bold', fontSize: '16px' }}>✓</div>
-          <span style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.5px' }}>Task Planner</span>
+          <svg viewBox="0 0 120 120" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+            <rect width="120" height="120" rx="22" fill="#6366F1"/>
+            <path d="M30 78L50 42L60 58L70 42L90 78" stroke="#fff" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M52 72L65 52L78 72" stroke="#fff" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <g transform="translate(60,30)"><circle r="3" fill="#FF8A00"/><line x1="0" y1="-6" x2="0" y2="-10" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/><line x1="5.2" y1="-3" x2="8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/><line x1="5.2" y1="3" x2="8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/><line x1="-5.2" y1="-3" x2="-8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/><line x1="-5.2" y1="3" x2="-8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/></g>
+          </svg>
+          <span style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.5px', color: '#312E81' }}>AnutTask</span>
         </div>
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
           <a href="#features" style={{ fontSize: '14px', color: '#64748B', textDecoration: 'none', fontWeight: 500 }}>Features</a>
@@ -31,7 +36,7 @@ export default function LandingPage() {
           <span style={{ color: ACCENT }}>Organized.</span>
         </h1>
         <p style={{ fontSize: '18px', color: '#64748B', lineHeight: 1.6, maxWidth: '560px', margin: '0 auto 32px' }}>
-          Task Planner is the all-in-one SaaS operating system for managing tasks, clients, categories, and deadlines — with AI scheduling and real-time notifications.
+          AnutTask is the all-in-one SaaS operating system for managing tasks, clients, categories, and deadlines — with AI scheduling and real-time notifications.
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <a href="/" style={{ padding: '14px 28px', background: ACCENT, color: '#FFF', borderRadius: '10px', fontSize: '15px', fontWeight: 600, textDecoration: 'none', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
@@ -137,7 +142,7 @@ export default function LandingPage() {
       {/* Footer CTA */}
       <section style={{ padding: '60px 32px', background: '#0F172A', textAlign: 'center' }}>
         <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#FFFFFF', margin: '0 0 12px', letterSpacing: '-0.5px' }}>Ready to organize your business?</h2>
-        <p style={{ fontSize: '16px', color: '#94A3B8', marginBottom: '24px' }}>Join professionals who trust Task Planner for their daily workflow.</p>
+        <p style={{ fontSize: '16px', color: '#94A3B8', marginBottom: '24px' }}>Join professionals who trust AnutTask for their daily workflow.</p>
         <a href="/" style={{ display: 'inline-block', padding: '14px 32px', background: ACCENT, color: '#FFF', borderRadius: '10px', fontSize: '15px', fontWeight: 600, textDecoration: 'none', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
           Get Started Free →
         </a>
@@ -145,7 +150,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer style={{ padding: '24px 32px', borderTop: '1px solid #E4E4E7', textAlign: 'center', fontSize: '13px', color: '#94A3B8' }}>
-        © {new Date().getFullYear()} Task Planner SaaS. All rights reserved.
+        © {new Date().getFullYear()} AnutTask SaaS. All rights reserved.
       </footer>
     </div>
   );

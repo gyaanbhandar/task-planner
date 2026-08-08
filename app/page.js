@@ -55,7 +55,7 @@ const TIME_OPTIONS_15 = (() => {
   return opts;
 })();
 
-export default function ModernTaskPlannerOS() {
+export default function AnutTaskOS() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   
@@ -175,7 +175,7 @@ export default function ModernTaskPlannerOS() {
               const sendNotif = () => {
                 if (Notification.permission === 'granted') {
                   try {
-                    new Notification('⏰ Task Planner Reminder', {
+                    new Notification('⏰ AnutTask Reminder', {
                       body: `${t.title}\n${t.time} • ${t.subcategory || 'General'}`,
                       tag: `task-${t.id}`,
                       requireInteraction: true,
@@ -200,7 +200,7 @@ export default function ModernTaskPlannerOS() {
     return () => clearInterval(interval);
   }, [tasks]);
 
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading Task Planner...</div>;
+  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading AnutTask...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 
   const getViewTitle = () => {
@@ -220,7 +220,7 @@ export default function ModernTaskPlannerOS() {
       const clientObj = clientsList.find(c => c.id === activeClient);
       return clientObj ? clientObj.name : "Client Workspace";
     }
-    return "Task Planner";
+    return "AnutTask";
   };
 
   const handleCreateTaskSubmit = async () => {

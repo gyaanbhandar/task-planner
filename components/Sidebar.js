@@ -19,10 +19,24 @@ export default function Sidebar({
         onClick={() => onViewChange('today', null, null)}
         style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingLeft: '8px', cursor: 'pointer' }}
       >
-        <div style={{ width: '32px', height: '32px', background: VISUAL_THEME.accent, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontWeight: 'bold', fontSize: '18px' }}>✓</div>
+        <div style={{ width: '34px', height: '34px', borderRadius: '9px', overflow: 'hidden', flexShrink: 0 }}>
+          <svg viewBox="0 0 120 120" width="34" height="34" xmlns="http://www.w3.org/2000/svg">
+            <rect width="120" height="120" rx="22" fill="#6366F1"/>
+            <path d="M30 78L50 42L60 58L70 42L90 78" stroke="#fff" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M52 72L65 52L78 72" stroke="#fff" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            <g transform="translate(60,30)">
+              <circle r="3" fill="#FF8A00"/>
+              <line x1="0" y1="-6" x2="0" y2="-10" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+              <line x1="5.2" y1="-3" x2="8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+              <line x1="5.2" y1="3" x2="8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+              <line x1="-5.2" y1="-3" x2="-8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+              <line x1="-5.2" y1="3" x2="-8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+            </g>
+          </svg>
+        </div>
         <div>
-          <h2 style={{ fontSize: '15px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>Task Planner</h2>
-          <p style={{ fontSize: '11px', color: VISUAL_THEME.textSec, margin: 0 }}>SaaS Business OS</p>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#312E81', margin: 0, letterSpacing: '-0.3px' }}>AnutTask</h2>
+          <p style={{ fontSize: '10px', color: VISUAL_THEME.textSec, margin: 0 }}>Smart SaaS OS by Anukant</p>
         </div>
       </div>
 
