@@ -87,7 +87,7 @@ export default function ViewSettings({ session }) {
           setNotifEnabled(true);
           setNotifStatus('Active ✅');
           localStorage.setItem('notifications_enabled', 'true');
-          new Notification("AnutTask 🔔", { body: "Notifications activated! Ab task reminders aayenge.", icon: '⚡' });
+          new Notification("AnuTask 🔔", { body: "Notifications activated! Ab task reminders aayenge.", icon: '⚡' });
         } else {
           setNotifStatus('Blocked by browser');
           localStorage.setItem('notifications_enabled', 'false');
@@ -115,7 +115,7 @@ export default function ViewSettings({ session }) {
     
     // Send actual notification
     if ('Notification' in window && Notification.permission === 'granted' && notifEnabled) {
-      new Notification("🔔 Test Alert — AnutTask", { 
+      new Notification("🔔 Test Alert — AnuTask", { 
         body: "Sound + Notification dono kaam kar rahe hain!",
         icon: '⚡',
         tag: 'test-notification'

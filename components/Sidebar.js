@@ -35,7 +35,7 @@ export default function Sidebar({
           </svg>
         </div>
         <div>
-          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#312E81', margin: 0, letterSpacing: '-0.3px' }}>AnutTask</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#312E81', margin: 0, letterSpacing: '-0.3px' }}>AnuTask</h2>
           <p style={{ fontSize: '10px', color: VISUAL_THEME.textSec, margin: 0 }}>Smart SaaS OS by Anukant</p>
         </div>
       </div>

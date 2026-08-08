@@ -1,14 +1,14 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'AnutTask — Smart SaaS OS by Anukant',
+  title: 'AnuTask — Smart SaaS OS by Anukant',
   description: 'AI-powered smart SaaS operating system for managing tasks, clients, and business workflows',
   icons: {
     icon: '/favicon.ico',
     apple: '/branding/icon-180x180.png',
   },
   openGraph: {
-    title: 'AnutTask — Smart SaaS OS by Anukant',
+    title: 'AnuTask — Smart SaaS OS by Anukant',
     description: 'AI-powered smart SaaS operating system for managing tasks, clients, and business workflows',
     images: ['/branding/og-image.png'],
   },

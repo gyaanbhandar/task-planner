@@ -67,7 +67,7 @@ export default function AuthScreen({ onLogin }) {
               </g>
             </svg>
           </div>
-          <h1 style={{ margin: 0, fontSize: '24px', color: '#312E81', fontWeight: 700, letterSpacing: '-0.5px' }}>AnutTask</h1>
+          <h1 style={{ margin: 0, fontSize: '24px', color: '#312E81', fontWeight: 700, letterSpacing: '-0.5px' }}>AnuTask</h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: VISUAL_THEME.textSec, fontWeight: 400 }}>Smart SaaS OS by Anukant</p>
         </div>
 

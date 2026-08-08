@@ -74,7 +74,7 @@ export default function ViewNotifications() {
           localStorage.setItem('notifications_enabled', 'true');
 
           try {
-            new Notification("AnutTask", {
+            new Notification("AnuTask", {
               body: "Notifications active ho gaye hain!",
             });
           } catch (e) {
@@ -117,7 +117,7 @@ export default function ViewNotifications() {
 
     // Trigger Test Popup
     if ('Notification' in window && Notification.permission === 'granted' && isEnabled) {
-      new Notification("AnutTask Test Alert 🔔", {
+      new Notification("AnuTask Test Alert 🔔", {
         body: "Sound and Desktop Alert successfully test ho gaya hai!",
       });
     } else {
