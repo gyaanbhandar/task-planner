@@ -37,7 +37,9 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDel
         justifyContent: 'space-between', 
         gap: isMobile ? '10px' : '12px',
         boxSizing: 'border-box',
-        marginBottom: '4px'
+        marginBottom: '4px',
+        overflow: 'hidden',
+        maxWidth: '100%'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
@@ -64,7 +66,7 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDel
             {task.title}
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap', maxWidth: '100%', overflow: 'hidden' }}>
             {task.category && (
               <span style={{ fontSize: '11px', background: '#EEF2FF', color: VISUAL_THEME.accent, padding: '2px 8px', borderRadius: '4px', fontWeight: 500, textTransform: 'capitalize' }}>
                 {task.category}
@@ -81,7 +83,7 @@ export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDel
               </span>
             )}
             {cleanDesc && (
-              <span style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', maxWidth: isMobile ? '100%' : '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', maxWidth: isMobile ? 'calc(100vw - 100px)' : '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }}>
                 • {cleanDesc}
               </span>
             )}
