@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 export async function POST(req) {
   const { email, password, name } = await req.json();
   
-  // Use service_role key for admin operations
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   
@@ -28,22 +27,37 @@ export async function POST(req) {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    // Insert into profiles table
+    const now = new Date().toISOString();
+    const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Insert into profiles table with subscription data
     await adminClient.from('profiles').insert({
       id: data.user.id,
       email: email,
       full_name: name || email.split('@')[0],
+      subscription_plan: 'free_trial',
       subscription_status: 'trial',
-      is_blocked: false
+      trial_start: now,
+      trial_end: trialEnd,
+      ai_prompts_used: 0,
+      ai_prompts_reset_at: now,
+      is_blocked: false,
+      created_at: now
     });
 
-    // In production, send email with credentials here (e.g., via Resend, SendGrid)
-    console.log(`[Admin] User created: ${email} with password. Email credentials in production.`);
+    // Create default "Demo Client 01" for the new user
+    await adminClient.from('user_clients').insert({
+      user_id: data.user.id,
+      name: 'Demo Client 01',
+      created_at: now
+    });
+
+    console.log(`[Admin] User created: ${email} with trial plan + Demo Client 01`);
 
     return Response.json({ 
       success: true, 
       user_id: data.user.id,
-      message: 'User created successfully. Credentials should be emailed.' 
+      message: 'User created with 14-day trial + Demo Client 01' 
     });
   } catch (e) {
     return Response.json({ error: e.message || 'Failed to create user' }, { status: 500 });

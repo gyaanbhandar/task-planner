@@ -1,30 +1,39 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { VISUAL_THEME } from '../constants/taskConstants';
+import { VISUAL_THEME, SUBSCRIPTION_PLANS } from '../constants/taskConstants';
 import { authService } from '../services/authService';
+import { PLAN_LIMITS } from '../services/subscriptionService';
 
-export default function ViewSettings({ session }) {
+export default function ViewSettings({ session, userProfile, onProfileUpdate }) {
   const userMeta = session?.user?.user_metadata || {};
-  const [name, setName] = useState(userMeta.full_name || '');
+  const [name, setName] = useState(userProfile?.full_name || userMeta.full_name || '');
   const [email] = useState(session?.user?.email || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [paymentMode, setPaymentMode] = useState('auto');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
+  const [activatingPlan, setActivatingPlan] = useState(null);
 
   // Notification states
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifStatus, setNotifStatus] = useState('Disabled');
   const [isIOS, setIsIOS] = useState(false);
 
+  // Subscription info from profile
+  const currentPlan = userProfile?.subscription_plan || 'free_trial';
+  const subscriptionStatus = userProfile?.subscription_status || 'trial';
+  
   // Trial calculation
-  const joinDate = new Date(session?.user?.created_at || Date.now());
-  const trialEndDate = new Date(joinDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const trialEnd = userProfile?.trial_end ? new Date(userProfile.trial_end) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const now = new Date();
-  const trialDaysLeft = Math.max(0, Math.ceil((trialEndDate - now) / (1000 * 60 * 60 * 24)));
-  const isTrialActive = trialDaysLeft > 0;
+  const trialDaysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+  const isTrialActive = currentPlan === 'free_trial' && trialDaysLeft > 0;
+  const isTrialExpired = currentPlan === 'free_trial' && trialDaysLeft <= 0;
+
+  useEffect(() => {
+    if (userProfile?.full_name) setName(userProfile.full_name);
+  }, [userProfile]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -66,6 +75,32 @@ export default function ViewSettings({ session }) {
     setSaving(false);
   };
 
+  const handleActivatePlan = async (planId) => {
+    if (planId === currentPlan) return;
+    setActivatingPlan(planId);
+    try {
+      const res = await fetch('/api/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: session.user.id, planId, action: 'activate' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`${planId === 'starter' ? 'Starter' : planId === 'pro' ? 'Pro' : 'Trial'} plan activated! 🎉`);
+        // Refresh profile
+        if (onProfileUpdate) {
+          const updated = { ...userProfile, subscription_plan: planId, subscription_status: planId === 'free_trial' ? 'trial' : 'active' };
+          onProfileUpdate(updated);
+        }
+      } else {
+        setMessage('Error: ' + (data.error || 'Plan activation failed'));
+      }
+    } catch (e) {
+      setMessage('Error: ' + e.message);
+    }
+    setActivatingPlan(null);
+  };
+
   const handleNotifToggle = async () => {
     if (typeof window === 'undefined') return;
     if (!('Notification' in window)) { alert('Aapka browser notifications support nahi karta.'); return; }
@@ -101,7 +136,6 @@ export default function ViewSettings({ session }) {
   };
 
   const handleTestNotif = () => {
-    // Play sound
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
@@ -113,7 +147,6 @@ export default function ViewSettings({ session }) {
       osc.start(); osc.stop(ctx.currentTime + 0.3);
     } catch(e) {}
     
-    // Send actual notification
     if ('Notification' in window && Notification.permission === 'granted' && notifEnabled) {
       new Notification("🔔 Test Alert — AnuTask", { 
         body: "Sound + Notification dono kaam kar rahe hain!",
@@ -126,7 +159,7 @@ export default function ViewSettings({ session }) {
   };
 
   const tabs = [
-    { id: 'profile', label: '👤 Profile', },
+    { id: 'profile', label: '👤 Profile' },
     { id: 'billing', label: '💳 Billing' },
     { id: 'password', label: '🔒 Password' },
     { id: 'notifications', label: '🔔 Notifications' }
@@ -139,31 +172,23 @@ export default function ViewSettings({ session }) {
   return (
     <div style={{ maxWidth: '700px' }}>
       
-      {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ fontSize: '22px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 4px 0' }}>⚙️ Settings</h2>
         <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>Manage your profile, billing, password and notifications</p>
       </div>
 
-      {/* Tab Navigation */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: '#F4F4F5', borderRadius: '12px', padding: '4px', overflowX: 'auto' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              flex: 1,
-              padding: '10px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
+              flex: 1, padding: '10px 16px', borderRadius: '10px', border: 'none',
+              fontSize: '13px', fontWeight: 600, cursor: 'pointer',
               background: activeTab === tab.id ? '#FFFFFF' : 'transparent',
               color: activeTab === tab.id ? VISUAL_THEME.accent : VISUAL_THEME.textSec,
               boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
+              transition: 'all 0.2s', whiteSpace: 'nowrap'
             }}
           >
             {tab.label}
@@ -182,12 +207,15 @@ export default function ViewSettings({ session }) {
               <div>
                 <div style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text }}>{name || 'Set your name'}</div>
                 <div style={{ fontSize: '13px', color: VISUAL_THEME.textSec }}>{email}</div>
+                <div style={{ fontSize: '11px', marginTop: '4px', padding: '2px 8px', background: currentPlan === 'pro' ? '#EEF2FF' : currentPlan === 'starter' ? '#ECFDF5' : '#FEF3C7', color: currentPlan === 'pro' ? '#4338CA' : currentPlan === 'starter' ? '#059669' : '#D97706', borderRadius: '4px', fontWeight: 600, display: 'inline-block' }}>
+                  {currentPlan === 'pro' ? '⭐ Pro' : currentPlan === 'starter' ? '🚀 Starter' : '🎁 Free Trial'}
+                </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={labelStyle}>Full Name / Username</label>
+                <label style={labelStyle}>Full Name</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Apna naam daalo" style={inputStyle} />
               </div>
               <div>
@@ -206,49 +234,101 @@ export default function ViewSettings({ session }) {
       {/* =================== BILLING TAB =================== */}
       {activeTab === 'billing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Trial Status */}
-          <div style={{ ...cardStyle, background: isTrialActive ? 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)' : '#FFFFFF' }}>
+          {/* Current Status */}
+          <div style={{ ...cardStyle, background: isTrialActive ? 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)' : isTrialExpired ? 'linear-gradient(135deg, #FEF2F2, #FECACA)' : 'linear-gradient(135deg, #ECFDF5, #D1FAE5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 4px 0', color: VISUAL_THEME.text }}>
-                  {isTrialActive ? '🎉 Free Trial Active' : '📋 Subscription Status'}
+                  {isTrialActive ? '🎉 Free Trial Active' : isTrialExpired ? '⚠️ Trial Expired' : `✅ ${currentPlan === 'starter' ? 'Starter' : 'Pro'} Plan Active`}
                 </h3>
                 <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>
-                  {isTrialActive ? `${trialDaysLeft} din baaki hain 14-day free trial mein` : 'Trial expire ho gaya. Plan choose karo.'}
+                  {isTrialActive ? `${trialDaysLeft} din baaki hain 14-day free trial mein` : isTrialExpired ? 'Trial khatam ho gaya. Plan choose karo neche se.' : `Your ${currentPlan === 'starter' ? 'Starter (₹99/mo)' : 'Pro (₹249/mo)'} plan is active.`}
                 </p>
               </div>
-              <div style={{ padding: '8px 16px', borderRadius: '20px', background: isTrialActive ? 'rgba(99,102,241,0.12)' : '#FEE2E2', color: isTrialActive ? VISUAL_THEME.accent : '#EF4444', fontSize: '12px', fontWeight: 700 }}>
-                {isTrialActive ? `${trialDaysLeft} days left` : 'Expired'}
+              <div style={{ padding: '8px 16px', borderRadius: '20px', background: isTrialActive ? 'rgba(99,102,241,0.12)' : isTrialExpired ? '#FEE2E2' : '#D1FAE5', color: isTrialActive ? VISUAL_THEME.accent : isTrialExpired ? '#EF4444' : '#059669', fontSize: '12px', fontWeight: 700 }}>
+                {isTrialActive ? `${trialDaysLeft} days left` : isTrialExpired ? 'Expired' : 'Active'}
               </div>
             </div>
             {isTrialActive && (
               <div style={{ marginTop: '16px' }}>
-                <div style={{ height: '6px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.5)', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${((14 - trialDaysLeft) / 14) * 100}%`, background: VISUAL_THEME.accent, borderRadius: '3px', transition: 'width 0.3s' }} />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Payment Mode Toggle */}
+          {/* AI Usage */}
           <div style={cardStyle}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 16px 0' }}>💳 Payment Mode</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {[
-                { id: 'auto', icon: '🔄', title: 'Auto-Pay', desc: 'Monthly automatic deduction. Recommended.' },
-                { id: 'manual', icon: '🏦', title: 'Manual Payment', desc: 'Pay manually via UPI/bank before renewal.' }
-              ].map(mode => (
-                <button key={mode.id} onClick={() => setPaymentMode(mode.id)} style={{
-                  padding: '16px', borderRadius: '12px', textAlign: 'left', cursor: 'pointer',
-                  border: paymentMode === mode.id ? `2px solid ${VISUAL_THEME.accent}` : `1px solid ${VISUAL_THEME.border}`,
-                  background: paymentMode === mode.id ? 'rgba(99,102,241,0.04)' : '#FFFFFF'
-                }}>
-                  <div style={{ fontSize: '20px', marginBottom: '8px' }}>{mode.icon}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '4px' }}>{mode.title}</div>
-                  <div style={{ fontSize: '12px', color: VISUAL_THEME.textSec, lineHeight: 1.4 }}>{mode.desc}</div>
-                  {paymentMode === mode.id && <div style={{ fontSize: '11px', color: VISUAL_THEME.accent, fontWeight: 700, marginTop: '8px' }}>✓ Selected</div>}
-                </button>
-              ))}
+            <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 12px 0' }}>🧠 AI Planner Usage</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '24px', fontWeight: 700, color: VISUAL_THEME.text }}>{userProfile?.ai_prompts_used || 0}</span>
+              <span style={{ fontSize: '14px', color: VISUAL_THEME.textSec }}>/ {PLAN_LIMITS[currentPlan]?.ai_prompts_per_month || 10} prompts used this month</span>
+            </div>
+            <div style={{ height: '6px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden', maxWidth: '300px' }}>
+              <div style={{ height: '100%', width: `${Math.min(100, ((userProfile?.ai_prompts_used || 0) / (PLAN_LIMITS[currentPlan]?.ai_prompts_per_month || 10)) * 100)}%`, background: VISUAL_THEME.accent, borderRadius: '3px' }} />
+            </div>
+          </div>
+
+          {/* Plans Comparison */}
+          <div style={cardStyle}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 20px 0' }}>📋 Choose Your Plan</h3>
+            <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: '-12px 0 20px 0' }}>Payment gateway coming soon — abhi backend se plan activate hoga.</p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              {SUBSCRIPTION_PLANS.map(plan => {
+                const isCurrentPlan = plan.id === currentPlan;
+                const isPro = plan.id === 'pro';
+                return (
+                  <div key={plan.id} style={{
+                    padding: '20px', borderRadius: '16px', textAlign: 'center',
+                    border: isCurrentPlan ? `2px solid ${VISUAL_THEME.accent}` : isPro ? '2px solid #8B5CF6' : `1px solid ${VISUAL_THEME.border}`,
+                    background: isCurrentPlan ? 'rgba(99,102,241,0.04)' : isPro ? 'rgba(139,92,246,0.02)' : '#FFFFFF',
+                    position: 'relative'
+                  }}>
+                    {plan.badge && (
+                      <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', padding: '2px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, background: isCurrentPlan ? VISUAL_THEME.accent : isPro ? '#8B5CF6' : '#F59E0B', color: '#FFF' }}>
+                        {isCurrentPlan ? 'CURRENT' : plan.badge}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px', marginTop: '8px' }}>{plan.name}</div>
+                    <div style={{ fontSize: '28px', fontWeight: 800, color: VISUAL_THEME.text, marginBottom: '4px' }}>
+                      {plan.price_inr === 0 ? 'Free' : `₹${plan.price_inr}`}
+                    </div>
+                    <div style={{ fontSize: '12px', color: VISUAL_THEME.textSec, marginBottom: '16px' }}>
+                      {plan.price_usd > 0 ? `$${plan.price_usd} ${plan.duration}` : plan.duration}
+                    </div>
+                    
+                    <div style={{ textAlign: 'left', fontSize: '12px', color: '#475569', marginBottom: '16px' }}>
+                      {plan.features.slice(0, 6).map((f, i) => (
+                        <div key={i} style={{ padding: '3px 0', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                          <span style={{ color: '#10B981', flexShrink: 0 }}>✓</span>
+                          <span>{f}</span>
+                        </div>
+                      ))}
+                      {plan.features.length > 6 && (
+                        <div style={{ padding: '3px 0', fontSize: '11px', color: VISUAL_THEME.textSec }}>
+                          + {plan.features.length - 6} more features
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => handleActivatePlan(plan.id)}
+                      disabled={isCurrentPlan || activatingPlan === plan.id}
+                      style={{
+                        width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 600, fontSize: '13px', cursor: isCurrentPlan ? 'default' : 'pointer',
+                        background: isCurrentPlan ? '#E2E8F0' : isPro ? '#8B5CF6' : VISUAL_THEME.accent,
+                        color: isCurrentPlan ? '#64748B' : '#FFF',
+                        border: 'none',
+                        opacity: activatingPlan === plan.id ? 0.6 : 1
+                      }}
+                    >
+                      {isCurrentPlan ? '✓ Current Plan' : activatingPlan === plan.id ? 'Activating...' : `Select ${plan.name}`}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

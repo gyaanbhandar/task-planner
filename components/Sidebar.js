@@ -4,12 +4,13 @@ import { VISUAL_THEME } from '../constants/taskConstants';
 
 export default function Sidebar({ 
   currentView, onViewChange, activeCategory, activeClient, 
-  userName, userFullName, onLogout, customCategories, clientsList 
+  userName, userFullName, onLogout, customCategories, clientsList, userProfile 
 }) {
   const [clientsExpanded, setClientsExpanded] = useState(true);
   
-  // Show actual name, not email
+  // Show actual name from profile, not email
   const displayName = userFullName || (userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'User');
+  const planLabel = userProfile?.subscription_plan === 'pro' ? 'Pro' : userProfile?.subscription_plan === 'starter' ? 'Starter' : 'Trial';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: VISUAL_THEME.sidebar, borderRight: `1px solid ${VISUAL_THEME.border}`, padding: '24px 16px', boxSizing: 'border-box' }}>
@@ -108,7 +109,10 @@ export default function Sidebar({
             {displayName[0]?.toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: VISUAL_THEME.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: VISUAL_THEME.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {displayName}
+              <span style={{ fontSize: '9px', padding: '1px 6px', borderRadius: '4px', background: planLabel === 'Pro' ? '#EEF2FF' : planLabel === 'Starter' ? '#ECFDF5' : '#FEF3C7', color: planLabel === 'Pro' ? '#4338CA' : planLabel === 'Starter' ? '#059669' : '#D97706', fontWeight: 700, flexShrink: 0 }}>{planLabel}</span>
+            </div>
             <div style={{ fontSize: '11px', color: VISUAL_THEME.textSec }}>Settings & Profile</div>
           </div>
           <span style={{ fontSize: '14px', color: VISUAL_THEME.textSec }}>⚙️</span>

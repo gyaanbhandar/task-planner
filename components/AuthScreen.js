@@ -32,7 +32,19 @@ export default function AuthScreen({ onLogin }) {
         setLoading(false); 
         return; 
       }
-      if (data?.session) { 
+      if (data?.session) {
+        // Setup profile + default client for new user
+        try {
+          await fetch('/api/setup-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: data.session.user.id,
+              email: email,
+              fullName: name
+            })
+          });
+        } catch(e) { console.error('Profile setup error:', e); }
         onLogin(data.session); 
       } else if (data?.user && !data?.session) {
         setSuccess('Account bana! Verification email bheja hai — inbox check karo.'); 

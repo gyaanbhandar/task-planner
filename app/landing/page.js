@@ -107,9 +107,10 @@ export default function LandingPage() {
                   <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px' }}>{plan.name}</h3>
                   <div style={{ marginBottom: '20px' }}>
                     <span style={{ fontSize: '36px', fontWeight: 800, color: '#0F172A' }}>
-                      {plan.price === 0 ? 'Free' : `${plan.currency}${plan.price}`}
+                      {plan.price_inr === 0 ? 'Free' : `₹${plan.price_inr}`}
                     </span>
-                    {plan.price > 0 && <span style={{ fontSize: '14px', color: '#64748B' }}>{plan.duration}</span>}
+                    {plan.price_inr > 0 && <span style={{ fontSize: '14px', color: '#64748B' }}> {plan.duration}</span>}
+                    {plan.price_usd > 0 && <div style={{ fontSize: '13px', color: '#94A3B8', marginTop: '2px' }}>${plan.price_usd} {plan.duration}</div>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
                     {plan.features.map((f, j) => (
@@ -130,7 +131,7 @@ export default function LandingPage() {
                     fontWeight: 600,
                     fontSize: '14px'
                   }}>
-                    {plan.price === 0 ? 'Start Free Trial' : 'Get Started'}
+                    {plan.price_inr === 0 ? 'Start Free Trial' : 'Get Started'}
                   </a>
                 </div>
               );

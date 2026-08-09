@@ -1,6 +1,81 @@
+import { createClient } from '@supabase/supabase-js';
+
 export async function POST(req) {
-  const { tasks } = await req.json();
+  const { tasks, userId } = await req.json();
   const apiKey = process.env.CLAUDE_API_KEY;
+
+  // Create admin client for profile checks
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  // Plan limits for AI prompts
+  const AI_LIMITS = {
+    free_trial: 10,
+    starter: 15,
+    pro: 75
+  };
+
+  // Check usage if we have DB access
+  if (supabaseUrl && serviceKey && userId) {
+    try {
+      const adminClient = createClient(supabaseUrl, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+      });
+
+      const { data: profile } = await adminClient
+        .from('profiles')
+        .select('subscription_plan, subscription_status, ai_prompts_used, ai_prompts_reset_at, trial_end')
+        .eq('id', userId)
+        .single();
+
+      if (profile) {
+        // Check trial expiry
+        if (profile.subscription_plan === 'free_trial' && profile.trial_end) {
+          if (new Date() > new Date(profile.trial_end)) {
+            return Response.json({
+              plan: '⚠️ Aapka 14-day free trial khatam ho gaya hai.\n\nAI Planner use karne ke liye Starter (₹99/mo) ya Pro (₹249/mo) plan activate karo.\n\nSettings → Billing mein jaake plan choose karo.',
+              limit_reached: true
+            });
+          }
+        }
+
+        // Check monthly reset
+        const resetAt = profile.ai_prompts_reset_at ? new Date(profile.ai_prompts_reset_at) : new Date(0);
+        const now = new Date();
+        const monthDiff = (now.getFullYear() - resetAt.getFullYear()) * 12 + (now.getMonth() - resetAt.getMonth());
+        
+        let currentUsage = profile.ai_prompts_used || 0;
+        
+        if (monthDiff >= 1) {
+          // Reset counter for new month
+          await adminClient.from('profiles').update({
+            ai_prompts_used: 0,
+            ai_prompts_reset_at: now.toISOString()
+          }).eq('id', userId);
+          currentUsage = 0;
+        }
+
+        const limit = AI_LIMITS[profile.subscription_plan] || AI_LIMITS.free_trial;
+
+        if (currentUsage >= limit) {
+          return Response.json({
+            plan: `⚠️ Aapke AI prompts khatam ho gaye! (${currentUsage}/${limit} used)\n\n${profile.subscription_plan === 'pro' ? 'Next month reset hoga.' : 'Zyada prompts ke liye Pro plan (₹249/mo = 75 prompts) upgrade karo.\n\nSettings → Billing mein jaake upgrade karo.'}`,
+            limit_reached: true,
+            used: currentUsage,
+            limit: limit
+          });
+        }
+
+        // Increment usage
+        await adminClient.from('profiles').update({
+          ai_prompts_used: currentUsage + 1
+        }).eq('id', userId);
+      }
+    } catch (e) {
+      console.error('Usage check error:', e);
+      // Continue anyway — don't block AI if usage check fails
+    }
+  }
 
   if (!apiKey) {
     return Response.json({

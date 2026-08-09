@@ -22,7 +22,8 @@ export default function ViewToday({
   formatIndianDate,
   userName,
   userFullName,
-  viewTitle
+  viewTitle,
+  userProfile
 }) {
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -34,7 +35,11 @@ export default function ViewToday({
     return 'Hey, Night owl';
   };
 
+  // Show actual user name (from profile DB → user_metadata → email fallback)
   const cleanName = userFullName || (userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'User');
+
+  // Check export permissions based on plan
+  const canExportJSON = !userProfile || userProfile.subscription_plan !== 'starter';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', boxSizing: 'border-box' }}>
@@ -88,14 +93,20 @@ export default function ViewToday({
               >
                 📄 Export as CSV
               </button>
-              <button
-                onClick={() => { exportTasksAsJSON(tasks); setShowExportMenu(false); }}
-                style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: VISUAL_THEME.text, cursor: 'pointer', textAlign: 'left', borderTop: `1px solid ${VISUAL_THEME.borderAlt}` }}
-                onMouseEnter={e => e.target.style.background = '#F8FAFC'}
-                onMouseLeave={e => e.target.style.background = 'transparent'}
-              >
-                📋 Export as JSON
-              </button>
+              {canExportJSON ? (
+                <button
+                  onClick={() => { exportTasksAsJSON(tasks); setShowExportMenu(false); }}
+                  style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: VISUAL_THEME.text, cursor: 'pointer', textAlign: 'left', borderTop: `1px solid ${VISUAL_THEME.borderAlt}` }}
+                  onMouseEnter={e => e.target.style.background = '#F8FAFC'}
+                  onMouseLeave={e => e.target.style.background = 'transparent'}
+                >
+                  📋 Export as JSON
+                </button>
+              ) : (
+                <div style={{ padding: '10px 16px', fontSize: '12px', color: '#94A3B8', borderTop: `1px solid ${VISUAL_THEME.borderAlt}` }}>
+                  🔒 JSON export — Pro plan required
+                </div>
+              )}
             </div>
           )}
         </div>

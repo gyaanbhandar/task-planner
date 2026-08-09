@@ -47,29 +47,72 @@ export const EMOJI_LIBRARY = [
   '☀️','🌙','⚡','🔥','💧','🧊','🎪','🎭','🎤','📸'
 ];
 
-// Subscription Plans
+// Subscription Plans — 3-Tier System
 export const SUBSCRIPTION_PLANS = [
   {
-    id: 'free',
+    id: 'free_trial',
     name: 'Free Trial',
-    price: 0,
-    duration: '14 days',
-    features: ['Up to 50 tasks', 'Basic categories', 'Single user', 'Email support']
+    price_inr: 0,
+    price_usd: 0,
+    duration: '14 Days',
+    badge: 'CURRENT',
+    features: [
+      'Unlimited Active Tasks',
+      'Up to 5 Clients',
+      'Unlimited Categories & Icons',
+      '10 AI Planner Prompts',
+      'All Views (Today, Calendar, List, Recurring)',
+      'Drag-and-Drop Reordering',
+      'Priority Badges',
+      'Unlimited Recurring Tasks',
+      'CSV & JSON Export',
+      'Browser Notifications',
+      'Enterprise Security (RLS)',
+      'Email Support'
+    ]
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    price_inr: 99,
+    price_usd: 2.99,
+    duration: '/month',
+    badge: 'POPULAR',
+    features: [
+      'Unlimited Active Tasks',
+      'Up to 2 Clients',
+      'Max 5 Categories',
+      '15 AI Planner Prompts / month',
+      'All Views (Today, Calendar, List, Recurring)',
+      'Drag-and-Drop Reordering',
+      'Priority Badges',
+      'Up to 5 Active Recurring Tasks',
+      'CSV Export Only',
+      'Browser Notifications',
+      'Enterprise Security (RLS)',
+      'Standard Email Support'
+    ]
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: 499,
-    currency: '₹',
+    price_inr: 249,
+    price_usd: 6.99,
     duration: '/month',
-    features: ['Unlimited tasks', 'Custom categories', 'Drag & drop reorder', 'CSV/JSON export', 'Priority support', 'AI Planner']
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    price: 1499,
-    currency: '₹',
-    duration: '/month',
-    features: ['Everything in Pro', 'Team collaboration', 'Client workspaces', 'Advanced analytics', 'Custom branding', 'API access']
+    badge: 'BEST VALUE',
+    features: [
+      'Unlimited Active Tasks',
+      'Unlimited Clients',
+      'Unlimited Categories & Icons',
+      '75 AI Planner Prompts / month',
+      'All Views (Today, Calendar, List, Recurring)',
+      'Drag-and-Drop Reordering',
+      'Priority Badges',
+      'Unlimited Recurring Tasks',
+      'CSV & JSON Export',
+      'Browser Notifications',
+      'Enterprise Security (RLS)',
+      'Priority Email + Chat Support'
+    ]
   }
 ];

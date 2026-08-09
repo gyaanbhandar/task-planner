@@ -78,13 +78,18 @@ export const taskService = {
     await Promise.all(updates);
   },
 
-  async fetchAiPlan(tasksSummary) {
+  async fetchAiPlan(tasksSummary, userId) {
     const res = await fetch('/api/ai-plan', { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ tasks: tasksSummary }) 
+      body: JSON.stringify({ tasks: tasksSummary, userId }) 
     });
     const data = await res.json();
-    return data.plan || 'Response nahi aaya.';
+    return { 
+      plan: data.plan || 'Response nahi aaya.',
+      limit_reached: data.limit_reached || false,
+      used: data.used,
+      limit: data.limit
+    };
   }
 };

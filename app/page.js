@@ -9,6 +9,7 @@ import IconPicker from '../components/IconPicker';
 import { authService } from '../services/authService';
 import { taskService } from '../services/taskService';
 import { notificationService } from '../services/notificationService';
+import { subscriptionService, PLAN_LIMITS } from '../services/subscriptionService';
 import { useTasks } from '../hooks/useTasks';
 
 import ViewToday from '../components/ViewToday';
@@ -85,6 +86,11 @@ export default function AnuTaskOS() {
   const [aiLoading, setAiLoading] = useState(false);
   const [notifPopupTask, setNotifPopupTask] = useState(null);
 
+  // Subscription & Profile state
+  const [userProfile, setUserProfile] = useState(null);
+  const [aiUsageInfo, setAiUsageInfo] = useState({ used: 0, limit: 10 });
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
+
   const [modalTitle, setModalTitle] = useState('');
   const [modalDesc, setModalDesc] = useState('');
   const [modalCat, setModalCat] = useState('personal');
@@ -121,6 +127,43 @@ export default function AnuTaskOS() {
   useEffect(() => {
     if (session) loadTasks();
   }, [session, loadTasks]);
+
+  // Setup profile + load subscription data on login
+  useEffect(() => {
+    if (!session?.user) return;
+    const setupProfile = async () => {
+      try {
+        // Call setup-profile API to ensure profile + default client exist
+        const res = await fetch('/api/setup-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: session.user.id,
+            email: session.user.email,
+            fullName: session.user.user_metadata?.full_name || ''
+          })
+        });
+        await res.json();
+
+        // Load profile from DB
+        const profile = await subscriptionService.getUserProfile(session.user.id);
+        setUserProfile(profile);
+
+        // Load AI usage
+        const usage = await subscriptionService.checkAiUsage(session.user.id, profile);
+        setAiUsageInfo({ used: usage.used, limit: usage.limit });
+
+        // Load user's clients from DB
+        const dbClients = await subscriptionService.getUserClients(session.user.id);
+        if (dbClients && dbClients.length > 0) {
+          setClientsList(dbClients.map(c => ({ id: c.id, name: c.name, db_id: c.id })));
+        }
+      } catch (e) {
+        console.error('Profile setup error:', e);
+      }
+    };
+    setupProfile();
+  }, [session]);
 
   // Request notification permission on app load
   useEffect(() => {
@@ -263,8 +306,16 @@ export default function AnuTaskOS() {
   const triggerAiPlanCall = async () => {
     setAiLoading(true);
     try {
-      const res = await taskService.fetchAiPlan(tasks.map(t => `- ${t.title} [${t.priority}]`).join('\n'));
-      setAiPlanOutput(res);
+      const result = await taskService.fetchAiPlan(
+        tasks.filter(t => t.status === 'pending').map(t => `- ${t.title} [${t.priority}] (${t.deadline || 'no date'})`).join('\n'),
+        session.user.id
+      );
+      setAiPlanOutput(result.plan);
+      // Refresh usage info
+      if (userProfile) {
+        const usage = await subscriptionService.checkAiUsage(session.user.id, userProfile);
+        setAiUsageInfo({ used: usage.used, limit: usage.limit });
+      }
     } catch(e) { setAiPlanOutput('AI planner error.'); }
     setAiLoading(false);
   };
@@ -322,10 +373,11 @@ export default function AnuTaskOS() {
             activeCategory={activeCategory}
             activeClient={activeClient}
             userName={session.user.email}
-            userFullName={userFullName}
+            userFullName={userProfile?.full_name || userFullName}
             onLogout={() => authService.signOut().then(() => setSession(null))}
             customCategories={customCategories}
             clientsList={clientsList}
+            userProfile={userProfile}
           />
         </div>
       )}
@@ -344,13 +396,44 @@ export default function AnuTaskOS() {
 
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isMobile ? '16px' : '32px' }}>
           
+          {/* Trial Countdown Banner */}
+          {userProfile && userProfile.subscription_plan === 'free_trial' && !trialBannerDismissed && (() => {
+            const daysLeft = subscriptionService.getTrialDaysLeft(userProfile);
+            const isExpired = subscriptionService.isTrialExpired(userProfile);
+            if (isExpired) return (
+              <div style={{ background: 'linear-gradient(135deg, #FEE2E2, #FECACA)', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #FECACA' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '18px' }}>⚠️</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#DC2626' }}>Your Pro Trial has expired — Upgrade now to continue using all features.</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button onClick={() => { setCurrentView('settings'); }} style={{ padding: '6px 14px', background: '#DC2626', color: '#FFF', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Upgrade Now</button>
+                  <button onClick={() => setTrialBannerDismissed(true)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+                </div>
+              </div>
+            );
+            if (daysLeft <= 7) return (
+              <div style={{ background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #C7D2FE' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '18px' }}>⏳</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#4338CA' }}>Your Pro Trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''} — Unlock lifetime productivity for just ₹99/mo.</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button onClick={() => { setCurrentView('settings'); }} style={{ padding: '6px 14px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Choose Plan</button>
+                  <button onClick={() => setTrialBannerDismissed(true)} style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+                </div>
+              </div>
+            );
+            return null;
+          })()}
+
           {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} viewTitle={activeViewTitle} />
+            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} />
           )}
 
           {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={handleSelectInspectedTask} />}
           {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={handleSelectInspectedTask} onViewDetail={setViewDetailTask} handleDeleteTask={handleDeleteTask} />}
-          {currentView === 'settings' && <ViewSettings session={session} />}
+          {currentView === 'settings' && <ViewSettings session={session} userProfile={userProfile} onProfileUpdate={setUserProfile} />}
           
           {currentView === 'manage_categories' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -402,13 +485,52 @@ export default function AnuTaskOS() {
           )}
 
           {currentView === 'ai_planner' && (
-            <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', textAlign: 'center' }}>
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>AI Schedule Engine</h3>
-              <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 24px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-                {aiLoading ? 'Calibrating...' : '🤖 Run AI Generation'}
-              </button>
-              {aiPlanOutput && <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, textAlign: 'left', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{aiPlanOutput}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', textAlign: 'center' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>AI Schedule Engine</h3>
+                <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: '0 0 8px 0' }}>Claude AI se aaj ka smart schedule banwao</p>
+                
+                {/* Usage Counter */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: '#F1F5F9', borderRadius: '20px', fontSize: '12px', fontWeight: 600, color: '#64748B', marginBottom: '16px' }}>
+                  <span>⚡</span>
+                  <span>{aiUsageInfo.used}/{aiUsageInfo.limit} prompts used</span>
+                  {userProfile && <span style={{ color: VISUAL_THEME.accent }}>({userProfile.subscription_plan === 'free_trial' ? 'Trial' : userProfile.subscription_plan === 'starter' ? 'Starter' : 'Pro'})</span>}
+                </div>
+
+                <div>
+                  <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 28px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: aiLoading ? 'wait' : 'pointer', fontSize: '14px', opacity: aiLoading ? 0.7 : 1 }}>
+                    {aiLoading ? '⏳ Analyzing your tasks...' : '🤖 Run AI Generation'}
+                  </button>
+                </div>
+
+                {/* Progress Bar */}
+                {aiUsageInfo.limit > 0 && (
+                  <div style={{ maxWidth: '300px', margin: '16px auto 0' }}>
+                    <div style={{ height: '4px', background: '#E2E8F0', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, (aiUsageInfo.used / aiUsageInfo.limit) * 100)}%`, background: aiUsageInfo.used >= aiUsageInfo.limit ? '#EF4444' : VISUAL_THEME.accent, borderRadius: '2px', transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {aiPlanOutput && (
+                <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 12px 0', color: VISUAL_THEME.text }}>📋 AI Generated Plan</h4>
+                  <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#334155' }}>{aiPlanOutput}</div>
+                </div>
+              )}
+
+              {/* How it works info */}
+              <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 12px 0' }}>💡 Kaise kaam karta hai?</h4>
+                <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.8 }}>
+                  <p style={{ margin: '0 0 8px 0' }}>• AI aapke <strong>pending tasks</strong>, unki <strong>priority</strong> aur <strong>deadlines</strong> analyze karta hai.</p>
+                  <p style={{ margin: '0 0 8px 0' }}>• Fir aaj ke liye <strong>top 3-5 tasks</strong> suggest karta hai with reasoning.</p>
+                  <p style={{ margin: '0 0 8px 0' }}>• Low priority tasks ko <strong>skip/postpone</strong> karne ka suggestion deta hai.</p>
+                  <p style={{ margin: 0 }}>• Monthly prompt limits: Trial = 10, Starter = 15, Pro = 75 prompts.</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
