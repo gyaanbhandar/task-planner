@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { VISUAL_THEME, CATEGORIES, CLIENTS, PRIORITY_CONFIG } from '../constants/taskConstants';
+import { VISUAL_THEME, CATEGORIES, PRIORITY_CONFIG } from '../constants/taskConstants';
 import { todayStr, formatIndianDate } from '../utils/dateUtils';
 import Sidebar from '../components/Sidebar';
 import AuthScreen from '../components/AuthScreen';
@@ -78,7 +78,7 @@ export default function AnuTaskOS() {
   const [newCatIcon, setNewCatIcon] = useState('📂');
   const [showIconPicker, setShowIconPicker] = useState(false);
   
-  const [clientsList, setClientsList] = useState(CLIENTS);
+  const [clientsList, setClientsList] = useState([]);
   const [newClientName, setNewClientName] = useState('');
   const [editingClient, setEditingClient] = useState(null);
 
@@ -157,6 +157,17 @@ export default function AnuTaskOS() {
         const dbClients = await subscriptionService.getUserClients(session.user.id);
         if (dbClients && dbClients.length > 0) {
           setClientsList(dbClients.map(c => ({ id: c.id, name: c.name, db_id: c.id })));
+        } else {
+          // No clients in DB — keep empty, user will see Demo Client 01 after setup-profile creates it
+          // Retry load once after a short delay (setup-profile might still be running)
+          setTimeout(async () => {
+            try {
+              const retry = await subscriptionService.getUserClients(session.user.id);
+              if (retry && retry.length > 0) {
+                setClientsList(retry.map(c => ({ id: c.id, name: c.name, db_id: c.id })));
+              }
+            } catch(e) {}
+          }, 2000);
         }
       } catch (e) {
         console.error('Profile setup error:', e);
@@ -292,13 +303,24 @@ export default function AnuTaskOS() {
     setNewCatName(''); setNewCatIcon('📂');
   };
 
-  const executeClientOperation = () => {
+  const executeClientOperation = async () => {
     if (!newClientName.trim()) return;
-    if (editingClient) {
-      setClientsList(prev => prev.map(c => c.id === editingClient ? { ...c, name: newClientName } : c));
-      setEditingClient(null);
-    } else {
-      setClientsList(prev => [...prev, { id: 'client_' + Date.now(), name: newClientName }]);
+    try {
+      if (editingClient) {
+        // Update in DB
+        await subscriptionService.updateClient(editingClient, session.user.id, newClientName);
+        setClientsList(prev => prev.map(c => c.id === editingClient ? { ...c, name: newClientName } : c));
+        setEditingClient(null);
+      } else {
+        // Add to DB
+        const newClient = await subscriptionService.addClient(session.user.id, newClientName);
+        if (newClient) {
+          setClientsList(prev => [...prev, { id: newClient.id, name: newClient.name, db_id: newClient.id }]);
+        }
+      }
+    } catch (e) {
+      console.error('Client operation error:', e);
+      alert('Error: ' + (e.message || 'Client save failed'));
     }
     setNewClientName('');
   };
@@ -475,7 +497,7 @@ export default function AnuTaskOS() {
                       <span style={{ fontSize: '13px', fontWeight: 500 }}>🏢 {cl.name}</span>
                       <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
                         <span onClick={() => { setEditingClient(cl.id); setNewClientName(cl.name); }}>✏️</span>
-                        <span onClick={() => setClientsList(prev => prev.filter(item => item.id !== cl.id))} style={{ color: '#EF4444' }}>🗑️</span>
+                        <span onClick={async () => { try { await subscriptionService.deleteClient(cl.id, session.user.id); } catch(e) {} setClientsList(prev => prev.filter(item => item.id !== cl.id)); }} style={{ color: '#EF4444' }}>🗑️</span>
                       </div>
                     </div>
                   ))}

@@ -313,19 +313,31 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
                       )}
                     </div>
 
-                    <button
-                      onClick={() => handleActivatePlan(plan.id)}
-                      disabled={isCurrentPlan || activatingPlan === plan.id}
-                      style={{
-                        width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 600, fontSize: '13px', cursor: isCurrentPlan ? 'default' : 'pointer',
-                        background: isCurrentPlan ? '#E2E8F0' : isPro ? '#8B5CF6' : VISUAL_THEME.accent,
-                        color: isCurrentPlan ? '#64748B' : '#FFF',
-                        border: 'none',
-                        opacity: activatingPlan === plan.id ? 0.6 : 1
-                      }}
-                    >
-                      {isCurrentPlan ? '✓ Current Plan' : activatingPlan === plan.id ? 'Activating...' : `Select ${plan.name}`}
-                    </button>
+                    {plan.id !== 'free_trial' && !isCurrentPlan ? (
+                      <button
+                        disabled
+                        style={{
+                          width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 600, fontSize: '13px', cursor: 'not-allowed',
+                          background: '#F1F5F9', color: '#94A3B8', border: `1px dashed #CBD5E1`
+                        }}
+                      >
+                        🔒 Payment Gateway Coming Soon
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleActivatePlan(plan.id)}
+                        disabled={isCurrentPlan || activatingPlan === plan.id}
+                        style={{
+                          width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 600, fontSize: '13px', cursor: isCurrentPlan ? 'default' : 'pointer',
+                          background: isCurrentPlan ? '#E2E8F0' : VISUAL_THEME.accent,
+                          color: isCurrentPlan ? '#64748B' : '#FFF',
+                          border: 'none',
+                          opacity: activatingPlan === plan.id ? 0.6 : 1
+                        }}
+                      >
+                        {isCurrentPlan ? '✓ Current Plan' : activatingPlan === plan.id ? 'Activating...' : `Select ${plan.name}`}
+                      </button>
+                    )}
                   </div>
                 );
               })}
