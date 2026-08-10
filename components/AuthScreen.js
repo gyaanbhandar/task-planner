@@ -22,20 +22,50 @@ export default function AuthScreen({ onLogin }) {
     
     if (isLogin) {
       const { data, error: err } = await authService.signIn(email, password);
-      if (err) { setError('Galat email ya password'); setLoading(false); return; }
+      if (err) { 
+        const errMsg = err.message || '';
+        if (errMsg.includes('Invalid login')) setError('❌ Galat email ya password. Check karke dubara try karo.');
+        else if (errMsg.includes('Email not confirmed')) setError('📧 Pehle email verify karo — inbox mein verification link bheja tha.');
+        else if (errMsg.includes('blocked') || errMsg.includes('banned')) setError('🚫 Aapka account block kiya gaya hai. Support se contact karo.');
+        else setError('❌ Login failed — ' + errMsg);
+        setLoading(false); 
+        return; 
+      }
       onLogin(data.session);
     } else {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) { setError('📧 Valid email address daalo (e.g. name@gmail.com)'); setLoading(false); return; }
+      if (password.length < 6) { setError('🔑 Password minimum 6 characters ka hona chahiye'); setLoading(false); return; }
+
       const { data, error: err } = await authService.signUp(email, password, name);
       if (err) { 
-        const msg = typeof err.message === 'string' ? err.message : (err.msg || err.error_description || JSON.stringify(err) || 'Signup failed — try different email/password');
-        setError(msg === '{}' ? 'Signup failed — email already registered ya password weak hai (min 6 chars)' : msg); 
+        const errMsg = (err.message || err.msg || err.error_description || '').toLowerCase();
+        
+        if (errMsg.includes('already registered') || errMsg.includes('already been registered') || errMsg.includes('already exists') || errMsg.includes('duplicate')) {
+          setError('📧 Ye email pehle se registered hai. Login tab se login karo ya doosri email use karo.');
+        } else if (errMsg.includes('password') && (errMsg.includes('weak') || errMsg.includes('short') || errMsg.includes('length'))) {
+          setError('🔑 Password kamzor hai — minimum 6 characters daalo with mix of letters & numbers.');
+        } else if (errMsg.includes('valid') && errMsg.includes('email')) {
+          setError('📧 Ye valid email address nahi hai. Sahi email daalo (e.g. name@gmail.com).');
+        } else if (errMsg.includes('rate') || errMsg.includes('limit') || errMsg.includes('too many')) {
+          setError('⏳ Bahut zyada attempts ho gaye. 1-2 minute baad try karo.');
+        } else if (errMsg.includes('network') || errMsg.includes('fetch')) {
+          setError('🌐 Internet connection check karo aur dubara try karo.');
+        } else if (errMsg.includes('database') || errMsg.includes('server')) {
+          setError('⚙️ Server pe issue hai — 1 minute baad dubara try karo.');
+        } else if (errMsg.includes('signups not allowed') || errMsg.includes('signup disabled')) {
+          setError('🚫 Abhi new signups band hain. Admin se contact karo.');
+        } else {
+          setError('❌ Signup failed — ' + (err.message || 'Kuch gadbad hui. Dubara try karo.'));
+        }
         setLoading(false); 
         return; 
       }
       if (data?.session) {
         // Setup profile + default client for new user
         try {
-          await fetch('/api/setup-profile', {
+          const res = await fetch('/api/setup-profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -44,13 +74,15 @@ export default function AuthScreen({ onLogin }) {
               fullName: name
             })
           });
+          const result = await res.json();
+          if (!res.ok) console.error('Profile setup warning:', result.error);
         } catch(e) { console.error('Profile setup error:', e); }
         onLogin(data.session); 
       } else if (data?.user && !data?.session) {
-        setSuccess('Account bana! Verification email bheja hai — inbox check karo.'); 
+        setSuccess('✅ Account ban gaya! Verification email bheja hai — inbox check karo (spam folder bhi dekho).'); 
         setIsLogin(true); 
       } else {
-        setSuccess('Account created! Ab Login tab se login karo.');
+        setSuccess('✅ Account created! Ab Login tab se login karo.');
         setIsLogin(true);
       }
     }
