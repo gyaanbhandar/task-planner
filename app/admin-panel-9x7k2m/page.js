@@ -82,7 +82,7 @@ export default function AnuTaskOS() {
   const dummyToast = (msg) => console.log(`[Notification]: ${msg}`);
   const {
     tasks, loading: tasksLoading, loadTasks,
-    handleToggleStatus, handleDeleteTask, handleReorderTasks
+    handleToggleStatus, handleDeleteTask, handleReorderTasks, handleImportTasks
   } = useTasks(session, dummyToast);
 
   // Get user's actual full name
@@ -305,7 +305,7 @@ export default function AnuTaskOS() {
         <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px' }}>
           
           {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userFullName} viewTitle={activeViewTitle} />
+            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userFullName} viewTitle={activeViewTitle} onImportTasks={handleImportTasks} />
           )}
 
           {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={handleSelectInspectedTask} />}

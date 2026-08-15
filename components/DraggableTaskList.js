@@ -86,7 +86,8 @@ export default function DraggableTaskList({
   onEdit,
   onDelete,
   isMobile,
-  emptyMessage
+  emptyMessage,
+  dragEnabled = true
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -107,6 +108,25 @@ export default function DraggableTaskList({
     return (
       <div style={{ padding: '40px 0', textAlign: 'center', color: VISUAL_THEME.textSec, fontSize: '13px' }}>
         {emptyMessage || 'No tasks found. Click "+ New Task" to add one!'}
+      </div>
+    );
+  }
+
+  // When sorting is active, render plain list without drag-and-drop
+  if (!dragEnabled) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {tasks.map(task => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            onToggle={onToggle}
+            onSelectDetail={onSelectDetail}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            isMobile={isMobile}
+          />
+        ))}
       </div>
     );
   }

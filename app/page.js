@@ -1,831 +1,341 @@
 'use client';
+import React, { useEffect, useRef } from 'react';
+import { SUBSCRIPTION_PLANS } from '../constants/taskConstants';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { VISUAL_THEME, CATEGORIES, PRIORITY_CONFIG } from '../constants/taskConstants';
-import { todayStr, formatIndianDate } from '../utils/dateUtils';
-import Sidebar from '../components/Sidebar';
-import AuthScreen from '../components/AuthScreen';
-import IconPicker from '../components/IconPicker';
-import { authService } from '../services/authService';
-import { taskService } from '../services/taskService';
-import { notificationService } from '../services/notificationService';
-import { subscriptionService, PLAN_LIMITS } from '../services/subscriptionService';
-import { useTasks } from '../hooks/useTasks';
+const ACCENT = '#6366F1';
+const ORANGE = '#FF8A00';
 
-import ViewToday from '../components/ViewToday';
-import ViewCalendar from '../components/ViewCalendar';
-import ViewAllTasks from '../components/ViewAllTasks';
-import ViewRecurring from '../components/ViewRecurring';
-import ViewSettings from '../components/ViewSettings';
-import RichTextEditor from '../components/RichTextEditor';
+const Logo = ({ size = 36 }) => (
+  <svg viewBox="0 0 120 120" width={size} height={size} xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="120" rx="22" fill="#6366F1"/>
+    <path d="M30 78L50 42L60 58L70 42L90 78" stroke="#fff" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M52 72L65 52L78 72" stroke="#fff" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    <g transform="translate(60,30)">
+      <circle r="3" fill="#FF8A00"/>
+      <line x1="0" y1="-6" x2="0" y2="-10" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="5.2" y1="-3" x2="8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="5.2" y1="3" x2="8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="-5.2" y1="-3" x2="-8.7" y2="-5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="-5.2" y1="3" x2="-8.7" y2="5" stroke="#FF8A00" strokeWidth="2.5" strokeLinecap="round"/>
+    </g>
+  </svg>
+);
 
-const convert12to24 = (time12) => {
-  if (!time12) return '09:00';
-  const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!match) return '09:00';
-  let [_, h, m, p] = match;
-  let hour = parseInt(h, 10);
-  if (p.toUpperCase() === 'PM' && hour < 12) hour += 12;
-  if (p.toUpperCase() === 'AM' && hour === 12) hour = 0;
-  return `${String(hour).padStart(2, '0')}:${m}`;
-};
-
-const convert24to12 = (time24) => {
-  if (!time24) return '09:00 AM';
-  const parts = time24.split(':');
-  let hour = parseInt(parts[0], 10);
-  const min = parts[1] || '00';
-  const period = hour >= 12 ? 'PM' : 'AM';
-  hour = hour % 12;
-  if (hour === 0) hour = 12;
-  return `${String(hour).padStart(2, '0')}:${min} ${period}`;
-};
-
-// Generate 15-min interval time options for desktop dropdown
-const TIME_OPTIONS_15 = (() => {
-  const opts = [];
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 15) {
-      const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      let dh = h % 12; if (dh === 0) dh = 12;
-      const period = h >= 12 ? 'PM' : 'AM';
-      const label = `${dh}:${String(m).padStart(2, '0')} ${period}`;
-      opts.push({ value: val, label });
-    }
-  }
-  return opts;
-})();
-
-export default function AnuTaskOS() {
-  const [session, setSession] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  
-  const [currentView, setCurrentView] = useState('today'); 
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [activeClient, setActiveClient] = useState(null);
-  const [dashboardFilter, setDashboardFilter] = useState('today');
-  
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [inspectedTask, setInspectedTask] = useState(null);
-  const [editTime, setEditTime] = useState('09:00');
-  const [viewDetailTask, setViewDetailTask] = useState(null);
-  
-  const [customCategories, setCustomCategories] = useState(CATEGORIES);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('📂');
-  const [showIconPicker, setShowIconPicker] = useState(false);
-  
-  const [clientsList, setClientsList] = useState([]);
-  const [newClientName, setNewClientName] = useState('');
-  const [editingClient, setEditingClient] = useState(null);
-
-  const [aiPlanOutput, setAiPlanOutput] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [notifPopupTask, setNotifPopupTask] = useState(null);
-
-  // Subscription & Profile state
-  const [userProfile, setUserProfile] = useState(null);
-  const [aiUsageInfo, setAiUsageInfo] = useState({ used: 0, limit: 10 });
-  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
-
-  const [modalTitle, setModalTitle] = useState('');
-  const [modalDesc, setModalDesc] = useState('');
-  const [modalCat, setModalCat] = useState('personal');
-  const [modalSub, setModalSub] = useState('none'); 
-  const [modalPriority, setModalPriority] = useState('medium');
-  const [modalDate, setModalDate] = useState(todayStr());
-  const [modalTime, setModalTime] = useState('09:00');
-  const [modalFrequency, setModalFrequency] = useState('one-time');
-
-  const notifiedTasksRef = useRef(new Set());
-
-  const dummyToast = (msg) => console.log(`[Notification]: ${msg}`);
-  const {
-    tasks, loading: tasksLoading, loadTasks,
-    handleToggleStatus, handleDeleteTask, handleReorderTasks
-  } = useTasks(session, dummyToast);
-
-  // Get user's actual full name
-  const userFullName = session?.user?.user_metadata?.full_name || '';
+export default function LandingPage() {
+  const navRef = useRef(null);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    authService.getSession().then(s => { setSession(s); setAuthLoading(false); });
-    const sub = authService.onAuthStateChange(s => setSession(s));
-    return () => sub.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (session) loadTasks();
-  }, [session, loadTasks]);
-
-  // Setup profile + load subscription data on login
-  useEffect(() => {
-    if (!session?.user) return;
-    const setupProfile = async () => {
-      try {
-        // Call setup-profile API to ensure profile + default client exist
-        const res = await fetch('/api/setup-profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: session.user.id,
-            email: session.user.email,
-            fullName: session.user.user_metadata?.full_name || ''
-          })
-        });
-        await res.json();
-
-        // Load profile from DB
-        const profile = await subscriptionService.getUserProfile(session.user.id);
-        setUserProfile(profile);
-
-        // Load AI usage
-        const usage = await subscriptionService.checkAiUsage(session.user.id, profile);
-        setAiUsageInfo({ used: usage.used, limit: usage.limit });
-
-        // Load user's clients from DB
-        const dbClients = await subscriptionService.getUserClients(session.user.id);
-        if (dbClients && dbClients.length > 0) {
-          setClientsList(dbClients.map(c => ({ id: c.id, name: c.name, db_id: c.id })));
-        } else {
-          // No clients in DB — keep empty, user will see Demo Client 01 after setup-profile creates it
-          // Retry load once after a short delay (setup-profile might still be running)
-          setTimeout(async () => {
-            try {
-              const retry = await subscriptionService.getUserClients(session.user.id);
-              if (retry && retry.length > 0) {
-                setClientsList(retry.map(c => ({ id: c.id, name: c.name, db_id: c.id })));
-              }
-            } catch(e) {}
-          }, 2000);
-        }
-      } catch (e) {
-        console.error('Profile setup error:', e);
+    const handleScroll = () => {
+      if (navRef.current) {
+        navRef.current.style.background = window.scrollY > 40 ? 'rgba(255,255,255,0.92)' : 'transparent';
+        navRef.current.style.backdropFilter = window.scrollY > 40 ? 'blur(20px)' : 'none';
+        navRef.current.style.borderBottom = window.scrollY > 40 ? '1px solid #E2E8F0' : '1px solid transparent';
       }
     };
-    setupProfile();
-  }, [session]);
-
-  // Request notification permission on app load
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleSelectInspectedTask = (task) => {
-    setInspectedTask(task);
-    if (!task) return;
-    setEditTime(convert12to24(task.time || '09:00 AM'));
-  };
-
-  const playChimeSound = () => {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } catch (e) {}
-  };
-
   useEffect(() => {
-    if (!tasks || tasks.length === 0) return;
-    const interval = setInterval(() => {
-      const isEnabled = localStorage.getItem('notifications_enabled') !== 'false';
-      if (!isEnabled) return;
-      const now = new Date();
-      let currentHour = now.getHours();
-      const currentMinute = String(now.getMinutes()).padStart(2, '0');
-      const period = currentHour >= 12 ? 'PM' : 'AM';
-      currentHour = currentHour % 12 || 12;
-      const currentTimeString = `${String(currentHour).padStart(2, '0')}:${currentMinute} ${period}`;
-      tasks.forEach(t => {
-        if (t.status === 'pending' && (t.deadline === todayStr() || t.type === 'daily')) {
-          const taskTime = (t.time || '').trim().toUpperCase();
-          const nowTime = currentTimeString.toUpperCase();
-          if (taskTime === nowTime && !notifiedTasksRef.current.has(t.id)) {
-            notifiedTasksRef.current.add(t.id);
-            playChimeSound();
-            // Send Windows/Mac notification — request permission if needed
-            if ('Notification' in window) {
-              const sendNotif = () => {
-                if (Notification.permission === 'granted') {
-                  try {
-                    new Notification('⏰ AnuTask Reminder', {
-                      body: `${t.title}\n${t.time} • ${t.subcategory || 'General'}`,
-                      tag: `task-${t.id}`,
-                      requireInteraction: true,
-                      silent: false
-                    });
-                  } catch(e) { console.log('Notification error:', e); }
-                }
-              };
-              if (Notification.permission === 'granted') {
-                sendNotif();
-              } else if (Notification.permission === 'default') {
-                Notification.requestPermission().then(p => { if (p === 'granted') sendNotif(); });
-              }
-            }
-            notificationService.send(`⏰ Task Reminder: ${t.title}`, `${t.time} • ${t.subcategory || 'General'}`);
-            // Show in-app detail popup
-            setNotifPopupTask({ ...t });
-          }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
         }
       });
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [tasks]);
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.ani-up').forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading AnuTask...</div>;
-  if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
+  const features = [
+    { icon: '📅', title: 'Smart Today View', desc: 'Auto-filtered daily tasks with priority-based reordering. See what matters right now.' },
+    { icon: '🔄', title: 'Drag & Drop', desc: 'Reorder tasks with smooth drag-and-drop on both desktop and mobile devices.' },
+    { icon: '👥', title: 'Client Workspaces', desc: 'Organize tasks by client with dedicated sub-category workspaces for every project.' },
+    { icon: '🧠', title: 'AI Planner', desc: 'Claude-powered AI analyzes your tasks and suggests an optimal daily schedule.' },
+    { icon: '🔔', title: 'Real-time Alerts', desc: 'Desktop notifications with sound at your scheduled task times. Never miss a deadline.' },
+    { icon: '📥', title: 'Task Export', desc: 'Export all your tasks as CSV or JSON for backups, reporting, and analysis.' },
+    { icon: '🔒', title: 'Data Isolation', desc: 'Row-level security ensures your data stays yours. No cross-user leakage ever.' },
+    { icon: '🛡️', title: 'Admin Panel', desc: 'Super admin dashboard with user management, MRR tracking, and subscription controls.' },
+    { icon: '💳', title: 'Flexible Billing', desc: 'Choose Auto-Pay or Manual Payment mode. Trial countdown dashboard included.' },
+  ];
 
-  const getViewTitle = () => {
-    if (currentView === 'today') return "Today's Tasks";
-    if (currentView === 'upcoming') return "Upcoming Tasks";
-    if (currentView === 'calendar') return "Calendar View";
-    if (currentView === 'all_tasks') return "All Tasks";
-    if (currentView === 'ai_planner') return "AI Planner";
-    if (currentView === 'recurring') return "Recurring Tasks";
-    if (currentView === 'manage_categories') return "Manage Categories";
-    if (currentView === 'settings') return "Settings";
-    if (currentView === 'category' && activeCategory) {
-      const catObj = customCategories.find(c => c.id === activeCategory);
-      return catObj ? catObj.name : "Category";
-    }
-    if (currentView === 'client_workspace' && activeClient) {
-      const clientObj = clientsList.find(c => c.id === activeClient);
-      return clientObj ? clientObj.name : "Client Workspace";
-    }
-    return "AnuTask";
+  const stats = [
+    { num: '500+', label: 'Active Users' },
+    { num: '15K+', label: 'Tasks Completed' },
+    { num: '99.9%', label: 'Uptime' },
+    { num: '4.9★', label: 'User Rating' },
+  ];
+
+  const trust = [
+    { icon: '🔐', title: 'Row-Level Security', sub: 'Supabase RLS per user' },
+    { icon: '☁️', title: 'Cloud-Native', sub: 'Built on Vercel + Supabase' },
+    { icon: '🔒', title: 'Data Isolation', sub: 'Zero cross-user access' },
+    { icon: '⚡', title: '99.9% Uptime', sub: 'Always available' },
+  ];
+
+  const s = {
+    page: { fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", color: '#0F172A', background: '#FAFBFF', minHeight: '100vh', overflowX: 'hidden', WebkitFontSmoothing: 'antialiased' },
+    nav: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, padding: '16px 0', transition: 'all 0.3s', background: 'transparent', borderBottom: '1px solid transparent' },
+    navInner: { maxWidth: 1140, margin: '0 auto', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    logoWrap: { display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' },
+    logoText: { fontSize: 20, fontWeight: 800, color: '#312E81', letterSpacing: -0.5 },
+    logoSub: { fontSize: 10, color: '#64748B', marginTop: -2 },
+    navLinks: { display: 'flex', alignItems: 'center', gap: 28 },
+    navLink: { fontSize: 14, fontWeight: 500, color: '#64748B', textDecoration: 'none' },
+    btnJoin: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: `linear-gradient(135deg, ${ACCENT}, #4F46E5)`, color: '#fff', borderRadius: 12, fontSize: 15, fontWeight: 700, textDecoration: 'none', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(99,102,241,0.3)', transition: 'all 0.25s' },
+    hero: { position: 'relative', padding: '150px 32px 100px', textAlign: 'center', overflow: 'hidden' },
+    heroOrb: (color, top, left, size) => ({ position: 'absolute', width: size, height: size, borderRadius: '50%', background: color, filter: 'blur(80px)', opacity: 0.1, top, left, pointerEvents: 'none' }),
+    badge: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 20px', background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 50, fontSize: 13, fontWeight: 600, color: ACCENT, marginBottom: 28 },
+    dot: { width: 7, height: 7, background: ORANGE, borderRadius: '50%', boxShadow: `0 0 8px ${ORANGE}` },
+    h1: { fontSize: 'clamp(36px, 6vw, 62px)', fontWeight: 900, lineHeight: 1.08, letterSpacing: -2, maxWidth: 700, margin: '0 auto 20px' },
+    gradient: { background: `linear-gradient(135deg, ${ACCENT}, #818CF8, ${ORANGE})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' },
+    heroP: { fontSize: 18, lineHeight: 1.65, color: '#64748B', maxWidth: 540, margin: '0 auto 36px' },
+    heroCtas: { display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' },
+    btnHero: { padding: '16px 40px', fontSize: 16, borderRadius: 14, fontWeight: 700, background: `linear-gradient(135deg, ${ACCENT}, #4F46E5)`, color: '#fff', textDecoration: 'none', boxShadow: '0 8px 30px rgba(99,102,241,0.35)', border: 'none', cursor: 'pointer', transition: 'all 0.25s' },
+    btnSecondary: { padding: '16px 32px', background: '#fff', color: '#0F172A', border: '1.5px solid #E2E8F0', borderRadius: 14, fontSize: 16, fontWeight: 600, textDecoration: 'none', cursor: 'pointer', transition: 'all 0.25s' },
+    heroSub: { fontSize: 13, color: '#94A3B8', marginTop: 18 },
+    section: { padding: '80px 32px' },
+    sectionWhite: { padding: '80px 32px', background: '#fff' },
+    eyebrow: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 2.5, color: ACCENT, fontWeight: 700, marginBottom: 12 },
+    h2: { fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 800, letterSpacing: -1, lineHeight: 1.15, marginBottom: 14 },
+    secP: { fontSize: 16, color: '#64748B', lineHeight: 1.6 },
+    grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, maxWidth: 1060, margin: '0 auto' },
+    card: { padding: '32px 28px', borderRadius: 18, border: '1px solid #E2E8F0', background: '#FAFBFF', transition: 'all 0.3s', position: 'relative', overflow: 'hidden', opacity: 0, transform: 'translateY(24px)' },
+    cardIcon: { width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 18, background: 'rgba(99,102,241,0.08)' },
+    cardH3: { fontSize: 17, fontWeight: 700, marginBottom: 8 },
+    cardP: { fontSize: 14, color: '#64748B', lineHeight: 1.55 },
+    aiGrid: { maxWidth: 1060, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' },
+    aiCard: { background: '#fff', borderRadius: 24, padding: 36, border: '1px solid #E2E8F0', boxShadow: '0 20px 60px rgba(0,0,0,0.04)' },
+    aiMsg: (isUser) => ({ padding: '14px 18px', borderRadius: 14, fontSize: 13, lineHeight: 1.5, marginBottom: 10, maxWidth: '85%', ...(isUser ? { background: ACCENT, color: '#fff', marginLeft: 'auto', borderBottomRightRadius: 4 } : { background: '#F1F5F9', color: '#0F172A', borderBottomLeftRadius: 4 }) }),
+    planCard: (isPopular) => ({ borderRadius: 24, padding: '36px 28px', border: isPopular ? `2px solid ${ACCENT}` : '1px solid #E2E8F0', background: isPopular ? '#fff' : '#FAFBFF', position: 'relative', transition: 'all 0.3s', boxShadow: isPopular ? '0 20px 60px rgba(99,102,241,0.12)' : 'none', transform: isPopular ? 'scale(1.03)' : 'none', opacity: 0, transformOrigin: 'center' }),
+    planBadge: (bg) => ({ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', padding: '5px 18px', borderRadius: 50, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: '#fff', background: bg }),
+    planPrice: { fontSize: 42, fontWeight: 900, marginBottom: 4 },
+    btnPlan: (fill) => ({ display: 'block', width: '100%', padding: 15, borderRadius: 14, fontSize: 15, fontWeight: 700, textAlign: 'center', textDecoration: 'none', border: fill ? 'none' : `1.5px solid ${ACCENT}`, background: fill ? `linear-gradient(135deg, ${ACCENT}, #4F46E5)` : 'transparent', color: fill ? '#fff' : ACCENT, cursor: 'pointer', boxShadow: fill ? '0 4px 16px rgba(99,102,241,0.3)' : 'none', transition: 'all 0.25s' }),
+    ctaSection: { padding: '100px 32px', textAlign: 'center', position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #0F172A, #312E81)' },
+    ctaGlow: (color, pos) => ({ position: 'absolute', width: 600, height: 600, borderRadius: '50%', filter: 'blur(100px)', opacity: 0.12, background: color, ...pos }),
+    footer: { padding: '30px 32px', borderTop: '1px solid #E2E8F0', textAlign: 'center', fontSize: 13, color: '#94A3B8', background: '#fff' },
   };
 
-  const handleCreateTaskSubmit = async () => {
-    if (!modalTitle.trim()) return;
-    const formatted12hTime = convert24to12(modalTime);
-    let subValue = 'General';
-    if (modalCat === 'clients' && modalSub !== 'none') {
-      const cl = clientsList.find(c => c.id === modalSub);
-      subValue = cl ? cl.name : 'General';
-    } else if (modalSub !== 'none') subValue = modalSub;
-    try {
-      await taskService.createTask({ title: modalTitle, description: modalDesc.trim(), time: formatted12hTime, category: modalCat, subcategory: subValue, priority: modalPriority, type: modalFrequency, deadline: modalDate }, session.user.id);
-      await loadTasks();
-      setShowCreateModal(false); setModalTitle(''); setModalDesc(''); setModalSub('none');
-    } catch (err) { alert('Error: ' + (err.message || err)); }
-  };
-
-  const executeCategoryOperation = () => {
-    if (!newCatName.trim()) return;
-    if (editingCategory) {
-      setCustomCategories(prev => prev.map(c => c.id === editingCategory ? { ...c, name: newCatName, icon: newCatIcon } : c));
-      setEditingCategory(null);
-    } else {
-      setCustomCategories(prev => [...prev, { id: 'cat_' + Date.now(), name: newCatName, icon: newCatIcon, color: '#6366F1', bg: 'rgba(99,102,241,0.04)' }]);
-    }
-    setNewCatName(''); setNewCatIcon('📂');
-  };
-
-  const executeClientOperation = async () => {
-    if (!newClientName.trim()) return;
-    try {
-      if (editingClient) {
-        // Update in DB
-        await subscriptionService.updateClient(editingClient, session.user.id, newClientName);
-        setClientsList(prev => prev.map(c => c.id === editingClient ? { ...c, name: newClientName } : c));
-        setEditingClient(null);
-      } else {
-        // Add to DB
-        const newClient = await subscriptionService.addClient(session.user.id, newClientName);
-        if (newClient) {
-          setClientsList(prev => [...prev, { id: newClient.id, name: newClient.name, db_id: newClient.id }]);
-        }
-      }
-    } catch (e) {
-      console.error('Client operation error:', e);
-      alert('Error: ' + (e.message || 'Client save failed'));
-    }
-    setNewClientName('');
-  };
-
-  const triggerAiPlanCall = async () => {
-    setAiLoading(true);
-    try {
-      const result = await taskService.fetchAiPlan(
-        tasks.filter(t => t.status === 'pending').map(t => `- ${t.title} [${t.priority}] (${t.deadline || 'no date'})`).join('\n'),
-        session.user.id
-      );
-      setAiPlanOutput(result.plan);
-      // Refresh usage info
-      if (userProfile) {
-        const usage = await subscriptionService.checkAiUsage(session.user.id, userProfile);
-        setAiUsageInfo({ used: usage.used, limit: usage.limit });
-      }
-    } catch(e) { setAiPlanOutput('AI planner error.'); }
-    setAiLoading(false);
-  };
-
-  const getBaseViewTasks = () => {
-    let d = [...tasks];
-    if (currentView === 'today') d = d.filter(t => t.deadline === todayStr() || t.type === 'daily' || (t.type === 'weekly' && new Date(t.deadline).getDay() === new Date().getDay()));
-    else if (currentView === 'upcoming') d = d.filter(t => t.deadline > todayStr() || t.type === 'weekly' || t.type === 'monthly');
-    else if (currentView === 'category' && activeCategory) {
-      if (activeCategory === 'clients') { const cn = clientsList.map(c => c.name.toLowerCase()); d = d.filter(t => t.category === 'clients' || cn.some(n => (t.subcategory||'').toLowerCase().includes(n))); }
-      else d = d.filter(t => t.category === activeCategory);
-    } else if (currentView === 'client_workspace' && activeClient) {
-      const obj = clientsList.find(c => c.id === activeClient);
-      const cn = obj ? obj.name.toLowerCase() : '';
-      d = d.filter(t => (t.subcategory||'').toLowerCase().includes(cn));
-    }
-    return d;
-  };
-
-  const base = getBaseViewTasks();
-  const countAll = base.length;
-  const countToday = base.filter(t => t.deadline === todayStr() || t.type === 'daily').length;
-  const countPending = base.filter(t => t.status === 'pending').length;
-  const countCompleted = base.filter(t => t.status === 'done').length;
-
-  const getFilteredTasksList = () => {
-    let d = [...base];
-    if (dashboardFilter === 'today') d = d.filter(t => t.deadline === todayStr() || t.type === 'daily');
-    else if (dashboardFilter === 'pending') d = d.filter(t => t.status === 'pending');
-    else if (dashboardFilter === 'completed') d = d.filter(t => t.status === 'done');
-    return d;
-  };
-
-  const activeViewTitle = getViewTitle();
-
-  const handleViewChange = (v, c, cl) => {
-    setCurrentView(v); setActiveCategory(c); setActiveClient(cl);
-    setDashboardFilter('today');
-    setMobileSidebarOpen(false);
-  };
+  const aniUp = { opacity: 0, transform: 'translateY(24px)', transition: 'opacity 0.6s ease, transform 0.6s ease' };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', background: VISUAL_THEME.bg, overflow: 'hidden', position: 'relative' }}>
-      
-      {/* Mobile overlay */}
-      {isMobile && mobileSidebarOpen && (
-        <div onClick={() => setMobileSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 9998 }} />
-      )}
+    <div style={s.page}>
 
-      {(!isMobile || mobileSidebarOpen) && (
-        <div style={{ width: '280px', height: '100%', flexShrink: 0, position: isMobile ? 'fixed' : 'relative', zIndex: 9999 }}>
-          <Sidebar
-            currentView={currentView}
-            onViewChange={handleViewChange}
-            activeCategory={activeCategory}
-            activeClient={activeClient}
-            userName={session.user.email}
-            userFullName={userProfile?.full_name || userFullName}
-            onLogout={() => authService.signOut().then(() => setSession(null))}
-            customCategories={customCategories}
-            clientsList={clientsList}
-            userProfile={userProfile}
-          />
-        </div>
-      )}
-
-      <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        
-        <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
-            <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
+      {/* ═══ NAV ═══ */}
+      <nav ref={navRef} style={s.nav}>
+        <div style={s.navInner}>
+          <a href="#" style={s.logoWrap}>
+            <Logo size={36} />
+            <div>
+              <div style={s.logoText}>AnuTask</div>
+              <div style={s.logoSub}>Smart SaaS OS by Anukant</div>
+            </div>
+          </a>
+          <div style={s.navLinks}>
+            <a href="#features" style={s.navLink}>Features</a>
+            <a href="#ai" style={s.navLink}>AI Planner</a>
+            <a href="#pricing" style={s.navLink}>Pricing</a>
+            <a href="/dashboard" style={s.btnJoin}>Join Now →</a>
           </div>
-          {!['settings'].includes(currentView) && (
-            <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
-          )}
+        </div>
+      </nav>
+
+      {/* ═══ HERO ═══ */}
+      <section style={s.hero}>
+        <div style={s.heroOrb(ACCENT, -200, -100, 500)} />
+        <div style={s.heroOrb(ORANGE, 'auto', 'auto', 400)} />
+
+        <div style={{ marginBottom: 0 }}>
+          <div style={s.badge}>
+            <span style={s.dot} />
+            AI-Powered Task Intelligence
+          </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isMobile ? '16px' : '32px' }}>
-          
-          {/* Trial Countdown Banner */}
-          {userProfile && userProfile.subscription_plan === 'free_trial' && !trialBannerDismissed && (() => {
-            const daysLeft = subscriptionService.getTrialDaysLeft(userProfile);
-            const isExpired = subscriptionService.isTrialExpired(userProfile);
-            if (isExpired) return (
-              <div style={{ background: 'linear-gradient(135deg, #FEE2E2, #FECACA)', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #FECACA' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '18px' }}>⚠️</span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#DC2626' }}>Your Pro Trial has expired — Upgrade now to continue using all features.</span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button onClick={() => { setCurrentView('settings'); }} style={{ padding: '6px 14px', background: '#DC2626', color: '#FFF', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Upgrade Now</button>
-                  <button onClick={() => setTrialBannerDismissed(true)} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '16px' }}>✕</button>
-                </div>
-              </div>
-            );
-            if (daysLeft <= 7) return (
-              <div style={{ background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #C7D2FE' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '18px' }}>⏳</span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#4338CA' }}>Your Pro Trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''} — Unlock lifetime productivity for just ₹99/mo.</span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button onClick={() => { setCurrentView('settings'); }} style={{ padding: '6px 14px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Choose Plan</button>
-                  <button onClick={() => setTrialBannerDismissed(true)} style={{ background: 'none', border: 'none', color: '#6366F1', cursor: 'pointer', fontSize: '16px' }}>✕</button>
-                </div>
-              </div>
-            );
-            return null;
-          })()}
+        <h1 style={s.h1}>
+          Your Business,<br />
+          <span style={s.gradient}>Organized.</span>
+        </h1>
 
-          {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} />
-          )}
+        <p style={s.heroP}>
+          The all-in-one SaaS operating system for managing tasks, clients, categories, and deadlines — with AI scheduling and real-time notifications.
+        </p>
 
-          {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={handleSelectInspectedTask} />}
-          {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={handleSelectInspectedTask} onViewDetail={setViewDetailTask} handleDeleteTask={handleDeleteTask} />}
-          {currentView === 'settings' && <ViewSettings session={session} userProfile={userProfile} onProfileUpdate={setUserProfile} />}
-          
-          {currentView === 'manage_categories' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0 }}>Categories Hub</h3>
-                <div style={{ display: 'flex', gap: '10px', maxWidth: '500px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div style={{ position: 'relative' }}>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Icon</label>
-                    <button onClick={() => setShowIconPicker(!showIconPicker)} style={{ width: '44px', height: '44px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{newCatIcon}</button>
-                    {showIconPicker && <IconPicker selectedIcon={newCatIcon} onSelect={icon => setNewCatIcon(icon)} onClose={() => setShowIconPicker(false)} />}
-                  </div>
-                  <div style={{ flex: 1, minWidth: '180px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Name</label>
-                    <input type="text" placeholder={editingCategory ? "Update name" : "New category"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', boxSizing: 'border-box' }} />
-                  </div>
-                  <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, height: '44px' }}>{editingCategory ? 'Update' : '+ Add'}</button>
+        <div style={s.heroCtas}>
+          <a href="/dashboard" style={s.btnHero}>Join Now — It&apos;s Free →</a>
+          <a href="#features" style={s.btnSecondary}>See Features</a>
+        </div>
+
+        <p style={s.heroSub}>
+          <span style={{ color: '#10B981', fontWeight: 600 }}>✓</span> 14-day free trial &nbsp;·&nbsp; No credit card required &nbsp;·&nbsp; Cancel anytime
+        </p>
+      </section>
+
+      {/* ═══ SOCIAL PROOF ═══ */}
+      <section style={{ textAlign: 'center', padding: '50px 32px 60px' }}>
+        <p style={{ fontSize: 13, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 2, fontWeight: 600, marginBottom: 24 }}>Trusted by professionals across India</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 60, flexWrap: 'wrap' }}>
+          {stats.map((st, i) => (
+            <div key={i} className="ani-up" style={{ ...aniUp, textAlign: 'center', transitionDelay: `${i * 0.1}s` }}>
+              <div style={{ fontSize: 36, fontWeight: 900, background: `linear-gradient(135deg, ${ACCENT}, ${ORANGE})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{st.num}</div>
+              <div style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>{st.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ FEATURES ═══ */}
+      <section id="features" style={s.sectionWhite}>
+        <div style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto 56px' }}>
+          <div style={s.eyebrow}>Features</div>
+          <h2 style={s.h2}>Everything you need to stay on track</h2>
+          <p style={s.secP}>From task management to client tracking — built for professionals who mean business.</p>
+        </div>
+        <div style={s.grid3}>
+          {features.map((f, i) => (
+            <div key={i} className="ani-up" style={{ ...s.card, transitionDelay: `${i * 0.05}s` }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${ACCENT}, ${ORANGE})`, opacity: 0, transition: 'opacity 0.3s' }} />
+              <div style={s.cardIcon}>{f.icon}</div>
+              <h3 style={s.cardH3}>{f.title}</h3>
+              <p style={s.cardP}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══ AI PLANNER ═══ */}
+      <section id="ai" style={s.section}>
+        <div style={s.aiGrid}>
+          <div>
+            <div style={s.aiCard}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444' }} />
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#F59E0B' }} />
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981' }} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                  {customCategories.map(c => (
-                    <div key={c.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{c.icon} {c.name}</span>
-                      <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
-                        <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); setNewCatIcon(c.icon); }}>✏️</span>
-                        <span onClick={() => setCustomCategories(prev => prev.filter(item => item.id !== c.id))} style={{ color: '#EF4444' }}>🗑️</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <span style={{ fontSize: 13, color: '#64748B', marginLeft: 8 }}>AI Planner</span>
               </div>
-              <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0 }}>Client List Hub</h3>
-                <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
-                  <input type="text" placeholder={editingClient ? "Update client" : "New client name"} value={newClientName} onChange={e => setNewClientName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
-                  <button onClick={executeClientOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingClient ? 'Update' : '+ Add'}</button>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                  {clientsList.map(cl => (
-                    <div key={cl.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 500 }}>🏢 {cl.name}</span>
-                      <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
-                        <span onClick={() => { setEditingClient(cl.id); setNewClientName(cl.name); }}>✏️</span>
-                        <span onClick={async () => { try { await subscriptionService.deleteClient(cl.id, session.user.id); } catch(e) {} setClientsList(prev => prev.filter(item => item.id !== cl.id)); }} style={{ color: '#EF4444' }}>🗑️</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div style={s.aiMsg(true)}>Aaj ke tasks plan kar do optimally 🧠</div>
+              <div style={s.aiMsg(false)}>
+                Done! Here&apos;s your optimized schedule:<br /><br />
+                <strong>9:00 AM</strong> — Client call (ABC)<br />
+                <strong>10:30 AM</strong> — Proposal draft<br />
+                <strong>1:00 PM</strong> — Lead follow-ups<br />
+                <strong>3:30 PM</strong> — Code review<br /><br />
+                <span style={{ display: 'inline-block', padding: '2px 8px', background: 'rgba(99,102,241,0.12)', color: ACCENT, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>⚡ 4 tasks · Priority-sorted</span>
               </div>
             </div>
-          )}
+          </div>
+          <div>
+            <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1, marginBottom: 16 }}>Meet Your AI <span style={{ color: ORANGE }}>Planner</span></h2>
+            <p style={{ fontSize: 16, color: '#64748B', lineHeight: 1.65, marginBottom: 24 }}>Powered by Claude AI, AnuTask&apos;s planner analyzes your tasks, deadlines, and priorities to create the perfect daily schedule — automatically.</p>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {['Priority-based intelligent scheduling', 'Deadline-aware task ordering', 'Natural language commands in Hindi & English', 'One-click schedule generation'].map((item, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', fontSize: 15, color: '#334155' }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: `linear-gradient(135deg, ${ACCENT}, #818CF8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, flexShrink: 0, marginTop: 1 }}>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
 
-          {currentView === 'ai_planner' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', textAlign: 'center' }}>
-                <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>AI Schedule Engine</h3>
-                <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: '0 0 8px 0' }}>Claude AI se aaj ka smart schedule banwao</p>
-                
-                {/* Usage Counter */}
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: '#F1F5F9', borderRadius: '20px', fontSize: '12px', fontWeight: 600, color: '#64748B', marginBottom: '16px' }}>
-                  <span>⚡</span>
-                  <span>{aiUsageInfo.used}/{aiUsageInfo.limit} prompts used</span>
-                  {userProfile && <span style={{ color: VISUAL_THEME.accent }}>({userProfile.subscription_plan === 'free_trial' ? 'Trial' : userProfile.subscription_plan === 'starter' ? 'Starter' : 'Pro'})</span>}
-                </div>
-
-                <div>
-                  <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 28px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: aiLoading ? 'wait' : 'pointer', fontSize: '14px', opacity: aiLoading ? 0.7 : 1 }}>
-                    {aiLoading ? '⏳ Analyzing your tasks...' : '🤖 Run AI Generation'}
-                  </button>
-                </div>
-
-                {/* Progress Bar */}
-                {aiUsageInfo.limit > 0 && (
-                  <div style={{ maxWidth: '300px', margin: '16px auto 0' }}>
-                    <div style={{ height: '4px', background: '#E2E8F0', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(100, (aiUsageInfo.used / aiUsageInfo.limit) * 100)}%`, background: aiUsageInfo.used >= aiUsageInfo.limit ? '#EF4444' : VISUAL_THEME.accent, borderRadius: '2px', transition: 'width 0.3s' }} />
-                    </div>
+      {/* ═══ PRICING ═══ */}
+      <section id="pricing" style={s.sectionWhite}>
+        <div style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto 56px' }}>
+          <div style={s.eyebrow}>Pricing</div>
+          <h2 style={s.h2}>Simple, transparent pricing</h2>
+          <p style={s.secP}>Start free. Upgrade when you need more power.</p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, maxWidth: 960, margin: '0 auto' }}>
+          {SUBSCRIPTION_PLANS.map((plan, i) => {
+            const isPopular = plan.id === 'pro';
+            const badgeBg = plan.id === 'free_trial' ? '#94A3B8' : plan.id === 'starter' ? '#10B981' : `linear-gradient(135deg, ${ACCENT}, ${ORANGE})`;
+            return (
+              <div key={plan.id} className="ani-up" style={{ ...s.planCard(isPopular), transitionDelay: `${i * 0.1}s` }}>
+                {plan.badge && (
+                  <div style={s.planBadge(badgeBg)}>
+                    {isPopular ? 'BEST VALUE ⚡' : plan.badge}
                   </div>
                 )}
-              </div>
-
-              {aiPlanOutput && (
-                <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 12px 0', color: VISUAL_THEME.text }}>📋 AI Generated Plan</h4>
-                  <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#334155' }}>{aiPlanOutput}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, marginTop: 8 }}>{plan.name}</div>
+                <div style={s.planPrice}>
+                  {plan.price_inr === 0 ? 'Free' : <><span style={{ fontSize: 22, fontWeight: 700, verticalAlign: 'super' }}>₹</span>{plan.price_inr}<span style={{ fontSize: 16, fontWeight: 500, color: '#64748B' }}>/mo</span></>}
                 </div>
-              )}
-
-              {/* How it works info */}
-              <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 12px 0' }}>💡 Kaise kaam karta hai?</h4>
-                <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.8 }}>
-                  <p style={{ margin: '0 0 8px 0' }}>• AI aapke <strong>pending tasks</strong>, unki <strong>priority</strong> aur <strong>deadlines</strong> analyze karta hai.</p>
-                  <p style={{ margin: '0 0 8px 0' }}>• Fir aaj ke liye <strong>top 3-5 tasks</strong> suggest karta hai with reasoning.</p>
-                  <p style={{ margin: '0 0 8px 0' }}>• Low priority tasks ko <strong>skip/postpone</strong> karne ka suggestion deta hai.</p>
-                  <p style={{ margin: 0 }}>• Monthly prompt limits: Trial = 10, Starter = 15, Pro = 75 prompts.</p>
+                <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 24 }}>
+                  {plan.price_usd > 0 ? `$${plan.price_usd} ${plan.duration}` : plan.duration}
                 </div>
+                <ul style={{ listStyle: 'none', padding: 0, marginBottom: 28 }}>
+                  {plan.features.slice(0, 7).map((f, fi) => (
+                    <li key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 0', fontSize: 13.5, color: '#334155' }}>
+                      <span style={{ color: '#10B981', fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      {f}
+                    </li>
+                  ))}
+                  {plan.features.length > 7 && (
+                    <li style={{ padding: '4px 0', fontSize: 11, color: '#94A3B8' }}>+ {plan.features.length - 7} more features</li>
+                  )}
+                </ul>
+                <a href="/dashboard" style={s.btnPlan(isPopular)}>
+                  {plan.price_inr === 0 ? 'Start Free Trial' : isPopular ? 'Join Now →' : 'Get Started'}
+                </a>
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
-      </div>
+      </section>
 
-      {/* VIEW TASK DETAILS PANEL (Read-Only) */}
-      {viewDetailTask && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.2)' }} onClick={() => setViewDetailTask(null)} />
-          <div style={{ width: isMobile ? '100vw' : '440px', height: '100%', background: '#FFFFFF', position: 'relative', zIndex: 100000, padding: '28px 24px', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 25px rgba(0,0,0,0.05)', boxSizing: 'border-box', overflowY: 'auto' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: VISUAL_THEME.text }}>Task Details</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button onClick={() => { handleSelectInspectedTask(viewDetailTask); setViewDetailTask(null); }} style={{ width: '38px', height: '38px', border: `1.5px solid ${VISUAL_THEME.accent}`, background: '#FFFFFF', borderRadius: '10px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: VISUAL_THEME.accent }} title="Edit Task">✏️</button>
-                <button onClick={() => setViewDetailTask(null)} style={{ width: '38px', height: '38px', border: 'none', background: '#F1F5F9', borderRadius: '10px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>✕</button>
-              </div>
-            </div>
-
-            {/* Title */}
-            <div style={{ fontSize: '20px', fontWeight: 700, color: VISUAL_THEME.text, lineHeight: 1.4, marginBottom: '8px', wordBreak: 'break-word' }}>{viewDetailTask.title}</div>
-
-            {/* Description - renders HTML with clickable links */}
-            <div style={{ fontSize: '14px', color: '#64748B', lineHeight: 1.8, marginBottom: '28px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-              {(() => {
-                const desc = viewDetailTask.description || 'No description';
-                // Check if description contains HTML tags
-                if (/<[a-z][\s\S]*>/i.test(desc)) {
-                  return <div dangerouslySetInnerHTML={{ __html: desc }} style={{ lineHeight: 1.8 }} />;
-                }
-                // Fallback: plain text with auto-linked URLs
-                const urlRegex = /(https?:\/\/[^\s]+)/g;
-                const parts = desc.split(urlRegex);
-                return parts.map((part, i) => urlRegex.test(part) 
-                  ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: VISUAL_THEME.accent, textDecoration: 'underline', wordBreak: 'break-all' }}>{part}</a> 
-                  : part
-                );
-              })()}
-            </div>
-            <style dangerouslySetInnerHTML={{__html: `
-              .view-detail-desc a { color: ${VISUAL_THEME.accent}; text-decoration: underline; word-break: break-all; }
-              .view-detail-desc ul, .view-detail-desc ol { margin: 4px 0; padding-left: 20px; }
-              .view-detail-desc li { margin: 2px 0; }
-            `}} />
-
-            {/* Detail Rows */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
-              {/* Category */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{(() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.icon : '📂'; })()}</span>
-                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Category</span>
-                <span style={{ fontSize: '13px', fontWeight: 600, padding: '4px 12px', borderRadius: '6px', background: (() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.bg : '#EEF2FF'; })(), color: (() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.color : VISUAL_THEME.accent; })() }}>{(() => { const c = customCategories.find(cat => cat.id === viewDetailTask.category); return c ? c.name : viewDetailTask.category || '—'; })()}</span>
-              </div>
-
-              {/* Client */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>👤</span>
-                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Client</span>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{viewDetailTask.subcategory || 'General'}</span>
-              </div>
-
-              {/* Priority */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{PRIORITY_CONFIG[viewDetailTask.priority]?.icon || '🔸'}</span>
-                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Priority</span>
-                <span style={{ fontSize: '13px', fontWeight: 600, padding: '4px 12px', borderRadius: '6px', background: PRIORITY_CONFIG[viewDetailTask.priority]?.bg || '#FEF3C7', color: PRIORITY_CONFIG[viewDetailTask.priority]?.color || '#F59E0B' }}>{(viewDetailTask.priority || 'medium').charAt(0).toUpperCase() + (viewDetailTask.priority || 'medium').slice(1)}</span>
-              </div>
-
-              {/* Frequency */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>🔄</span>
-                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Frequency</span>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{viewDetailTask.type === 'one-time' ? 'One-Time' : viewDetailTask.type === 'daily' ? 'Daily' : viewDetailTask.type === 'weekly' ? 'Weekly' : viewDetailTask.type === 'monthly' ? 'Monthly' : viewDetailTask.type || 'One-Time'}</span>
-              </div>
-
-              {/* Date */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>📅</span>
-                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Date</span>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{(() => { if (!viewDetailTask.deadline) return 'No Date'; try { const d = new Date(viewDetailTask.deadline + 'T00:00:00'); const day = String(d.getDate()).padStart(2,'0'); const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; return `${day} ${months[d.getMonth()]} ${d.getFullYear()} (${days[d.getDay()]})`; } catch(e) { return viewDetailTask.deadline; } })()}</span>
-              </div>
-
-              {/* Time */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>🕐</span>
-                <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500, width: '90px', flexShrink: 0 }}>Time</span>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text }}>{viewDetailTask.time || '09:00 AM'}</span>
-              </div>
-            </div>
-
-            {/* Footer: Mark Complete + Edit Task */}
-            <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: `1px solid ${VISUAL_THEME.border}`, marginTop: '24px' }}>
-              <button onClick={async () => { await handleToggleStatus(viewDetailTask.id, viewDetailTask.status); await loadTasks(); setViewDetailTask(null); }} style={{ flex: 1, padding: '13px', background: '#FFFFFF', color: viewDetailTask.status === 'done' ? '#D97706' : '#059669', border: `1.5px solid ${viewDetailTask.status === 'done' ? '#D97706' : '#059669'}`, borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>{viewDetailTask.status === 'done' ? '↩️ Mark Incomplete' : '✓ Mark Complete'}</button>
-              <button onClick={() => { handleSelectInspectedTask(viewDetailTask); setViewDetailTask(null); }} style={{ flex: 1, padding: '13px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>✏️ Edit Task</button>
-            </div>
-          </div>
+      {/* ═══ TRUST ═══ */}
+      <section style={{ ...s.section, textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto 40px' }}>
+          <div style={s.eyebrow}>Security</div>
+          <h2 style={s.h2}>Enterprise-grade security, startup-friendly pricing</h2>
         </div>
-      )}
-
-      {/* EDIT MODAL — Full-screen premium */}
-      {inspectedTask && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', padding: isMobile ? 0 : '24px', boxSizing: 'border-box' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setInspectedTask(null); }}
-        >
-          <div style={{
-            background: '#FFFFFF', borderRadius: isMobile ? '24px 24px 0 0' : '20px',
-            padding: isMobile ? '24px 20px 32px' : '32px 36px',
-            width: '100%', maxWidth: '680px',
-            maxHeight: isMobile ? '95vh' : '90vh', overflowY: 'auto',
-            boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.15)',
-            border: isMobile ? 'none' : `1px solid ${VISUAL_THEME.border}`,
-            boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '20px'
-          }}>
-            <style dangerouslySetInnerHTML={{__html: `div::-webkit-scrollbar { display: none !important; }`}} />
-
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: `1px solid ${VISUAL_THEME.border}` }}>
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0, letterSpacing: '-0.5px' }}>Edit Task</h2>
-                <p style={{ fontSize: '12px', color: VISUAL_THEME.textSec, margin: '4px 0 0', lineHeight: 1.4 }}>Update task details, notes and schedule.</p>
-              </div>
-              <button onClick={() => setInspectedTask(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: VISUAL_THEME.textSec, fontSize: '16px', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#E2E8F0'} onMouseLeave={e => e.currentTarget.style.background = '#F1F5F9'}>✕</button>
-            </div>
-
-            {/* Title */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Task Title</label>
-              <input type="text" value={inspectedTask.title || ''} onChange={e => setInspectedTask({ ...inspectedTask, title: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-            </div>
-
-            {/* Rich Text Description */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Description</label>
-              <RichTextEditor
-                value={inspectedTask.description || ''}
-                onChange={(html) => setInspectedTask({ ...inspectedTask, description: html })}
-                placeholder="Add details, links, notes... Paste from docs to keep formatting!"
-              />
-            </div>
-
-            {/* Grid: Category + Client */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Category</label>
-                <select value={inspectedTask.category || 'personal'} onChange={e => setInspectedTask({ ...inspectedTask, category: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  {customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Client</label>
-                <select value={inspectedTask.subcategory || 'General'} onChange={e => setInspectedTask({ ...inspectedTask, subcategory: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  <option value="General">General</option>
-                  {clientsList.map(cl => <option key={cl.id} value={cl.name}>🏢 {cl.name}</option>)}
-                </select>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap', maxWidth: 800, margin: '0 auto' }}>
+          {trust.map((t, i) => (
+            <div key={i} className="ani-up" style={{ ...aniUp, display: 'flex', alignItems: 'center', gap: 12, transitionDelay: `${i * 0.1}s` }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(99,102,241,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{t.icon}</div>
+              <div style={{ textAlign: 'left' }}>
+                <strong style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>{t.title}</strong>
+                <span style={{ fontSize: 12, color: '#64748B' }}>{t.sub}</span>
               </div>
             </div>
-
-            {/* Grid: Priority + Frequency */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Priority</label>
-                <select value={inspectedTask.priority || 'medium'} onChange={e => setInspectedTask({ ...inspectedTask, priority: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  <option value="low">🔹 Low</option><option value="medium">🔸 Medium</option><option value="high">🔺 High</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Frequency</label>
-                <select value={inspectedTask.type || 'one-time'} onChange={e => setInspectedTask({ ...inspectedTask, type: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  <option value="one-time">One-Time</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Date & Time */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Date & Time</label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-                {isMobile ? (
-                  <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-                ) : (
-                  <select value={editTime} onChange={e => setEditTime(e.target.value)} style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box', cursor: 'pointer' }}>
-                    {TIME_OPTIONS_15.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{ display: 'flex', gap: '12px', borderTop: `1px solid ${VISUAL_THEME.border}`, paddingTop: '20px', marginTop: '8px' }}>
-              <button onClick={() => setInspectedTask(null)} style={{ flex: 1, padding: '14px 0', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.textSec, cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}>Cancel</button>
-              <button onClick={async () => { await taskService.updateTask(inspectedTask.id, { ...inspectedTask, time: convert24to12(editTime) }); await loadTasks(); setInspectedTask(null); }} style={{ flex: 2, padding: '14px 0', borderRadius: '12px', border: 'none', background: VISUAL_THEME.accent, color: '#FFFFFF', cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity = '0.9'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>Save Changes</button>
-              <button onClick={async () => { await handleDeleteTask(inspectedTask.id); setInspectedTask(null); }} style={{ padding: '14px 20px', borderRadius: '12px', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA', cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'} onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>🗑️</button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </section>
 
-      {/* CREATE MODAL */}
-      {/* NOTIFICATION DETAIL POPUP */}
-      {notifPopupTask && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(6px)' }} onClick={e => { if(e.target === e.currentTarget) setNotifPopupTask(null); }}>
-          <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '0', width: '100%', maxWidth: '420px', boxShadow: '0 25px 60px rgba(0,0,0,0.15)', overflow: 'hidden', animation: 'notifSlideIn 0.3s ease-out' }}>
-            <div style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', padding: '24px 24px 20px', color: '#FFFFFF' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏰</div>
-                <button onClick={() => setNotifPopupTask(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', color: '#FFF', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0' }}>Task Reminder</h3>
-              <p style={{ fontSize: '13px', margin: 0, opacity: 0.85 }}>Aapke task ka time aa gaya hai!</p>
-            </div>
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', marginBottom: '4px' }}>Task Title</div>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>{notifPopupTask.title}</div>
-              </div>
-              {notifPopupTask.description && (
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', marginBottom: '4px' }}>Description</div>
-                  <div style={{ fontSize: '14px', color: '#475569', lineHeight: 1.5 }}>{notifPopupTask.description}</div>
-                </div>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Time</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>🕐 {notifPopupTask.time || '—'}</div>
-                </div>
-                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Priority</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>{notifPopupTask.priority === 'high' ? '🔺 High' : notifPopupTask.priority === 'medium' ? '🔸 Medium' : '🔹 Low'}</div>
-                </div>
-                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Category</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>{(() => { const c = customCategories.find(cat => cat.id === notifPopupTask.category); return c ? `${c.icon} ${c.name}` : notifPopupTask.category || '—'; })()}</div>
-                </div>
-                <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '10px 12px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase' }}>Client</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginTop: '2px' }}>{notifPopupTask.subcategory || 'General'}</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                <button onClick={async () => { await handleToggleStatus(notifPopupTask.id, notifPopupTask.status); await loadTasks(); setNotifPopupTask(null); }} style={{ flex: 1, padding: '12px', background: '#16A34A', color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }}>✅ Mark Done</button>
-                <button onClick={() => setNotifPopupTask(null)} style={{ flex: 1, padding: '12px', background: '#F1F5F9', color: '#64748B', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }}>Dismiss</button>
-              </div>
-            </div>
-          </div>
-          <style>{`@keyframes notifSlideIn { from { transform: scale(0.9) translateY(-20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }`}</style>
+      {/* ═══ FINAL CTA ═══ */}
+      <section style={s.ctaSection}>
+        <div style={s.ctaGlow(ACCENT, { top: -200, left: -100 })} />
+        <div style={s.ctaGlow(ORANGE, { bottom: -200, right: -100 })} />
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <h2 style={{ fontSize: 'clamp(30px, 5vw, 44px)', fontWeight: 900, color: '#fff', letterSpacing: -1, marginBottom: 14 }}>Ready to organize your business?</h2>
+          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.6)', marginBottom: 36 }}>Join professionals who trust AnuTask for their daily workflow.</p>
+          <a href="/dashboard" style={{ ...s.btnJoin, padding: '18px 48px', fontSize: 17, borderRadius: 16, background: `linear-gradient(135deg, ${ORANGE}, #F97316)`, boxShadow: '0 8px 30px rgba(255,138,0,0.35)' }}>
+            Join Now — Start Free →
+          </a>
         </div>
-      )}
+      </section>
 
-      {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)' }} onClick={e => { if(e.target === e.currentTarget) setShowCreateModal(false); }}>
-          <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Create Task</h2><button onClick={() => setShowCreateModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer' }}>✕</button></div>
-            <input type="text" placeholder="Task Title *" value={modalTitle} onChange={e => setModalTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-            <textarea placeholder="Description..." value={modalDesc} onChange={e => setModalDesc(e.target.value)} style={{ width: '100%', height: '60px', padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', resize: 'none', boxSizing: 'border-box' }} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Category</label><select value={modalCat} onChange={e => { setModalCat(e.target.value); if(e.target.value !== 'clients') setModalSub('none'); }} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>{customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></div>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Client</label><select value={modalSub} onChange={e => setModalSub(e.target.value)} disabled={modalCat !== 'clients'} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: modalCat === 'clients' ? '#F8FAFC' : '#E2E8F0', width: '100%', boxSizing: 'border-box', cursor: modalCat === 'clients' ? 'pointer' : 'not-allowed' }}><option value="none">General</option>{clientsList.map(cl => <option key={cl.id} value={cl.id}>🏢 {cl.name}</option>)}</select></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Frequency</label><select value={modalFrequency} onChange={e => setModalFrequency(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}><option value="one-time">One-Time</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Priority</label><select value={modalPriority} onChange={e => setModalPriority(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}><option value="low">🔹 Low</option><option value="medium">🔸 Medium</option><option value="high">🔺 High</option></select></div>
-            </div>
-            <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Date & Time</label><div style={{ display: 'flex', gap: '8px' }}><input type="date" value={modalDate} onChange={e => setModalDate(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} />{isMobile ? <input type="time" value={modalTime} onChange={e => setModalTime(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} /> : <select value={modalTime} onChange={e => setModalTime(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box', cursor: 'pointer', appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748B\' stroke-width=\'2\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center', paddingRight: '28px' }}>{TIME_OPTIONS_15.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>}</div></div>
-            <div style={{ display: 'flex', gap: '10px', borderTop: `1px solid ${VISUAL_THEME.border}`, paddingTop: '16px', marginTop: '8px' }}>
-              <button onClick={() => setShowCreateModal(false)} style={{ flex: 1, padding: '12px 0', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFF', color: VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleCreateTaskSubmit} style={{ flex: 1, padding: '12px 0', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFF', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Save Task</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ═══ FOOTER ═══ */}
+      <footer style={s.footer}>
+        <p>© {new Date().getFullYear()} <a href="/" style={{ color: ACCENT, textDecoration: 'none' }}>AnuTask</a> — Smart SaaS OS by Anukant. All rights reserved.</p>
+      </footer>
+
+      {/* ═══ RESPONSIVE ═══ */}
+      <style>{`
+        @media (max-width: 900px) {
+          #ai > div { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 768px) {
+          nav > div > div:last-child { display: none !important; }
+          nav > div::after { content: '☰'; font-size: 22px; color: #312E81; cursor: pointer; }
+        }
+      `}</style>
     </div>
   );
 }

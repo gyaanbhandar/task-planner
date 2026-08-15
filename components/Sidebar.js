@@ -4,7 +4,8 @@ import { VISUAL_THEME } from '../constants/taskConstants';
 
 export default function Sidebar({ 
   currentView, onViewChange, activeCategory, activeClient, 
-  userName, userFullName, onLogout, customCategories, clientsList, userProfile 
+  userName, userFullName, onLogout, customCategories, clientsList, userProfile,
+  trashCount 
 }) {
   const [clientsExpanded, setClientsExpanded] = useState(true);
   
@@ -57,6 +58,18 @@ export default function Sidebar({
             </button>
           );
         })}
+
+        {/* Trash Bin */}
+        <button onClick={() => onViewChange('trash', null, null)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', border: 'none', background: currentView === 'trash' ? 'rgba(239, 68, 68, 0.06)' : 'transparent', color: currentView === 'trash' ? '#DC2626' : VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 600, cursor: 'pointer', textAlign: 'left', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span>🗑️</span><span>Trash Bin</span>
+          </div>
+          {(trashCount || 0) > 0 && (
+            <span style={{ fontSize: '11px', fontWeight: 700, background: '#FEE2E2', color: '#DC2626', padding: '2px 8px', borderRadius: '10px', minWidth: '18px', textAlign: 'center' }}>
+              {trashCount}
+            </span>
+          )}
+        </button>
 
         <div style={{ marginTop: '20px', marginBottom: '6px', fontSize: '11px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '12px' }}>Categories</div>
         

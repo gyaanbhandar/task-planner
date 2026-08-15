@@ -4,6 +4,7 @@ import { taskService } from '../services/taskService';
 
 export function useTasks(session, showToast) {
   const [tasks, setTasks] = useState([]);
+  const [trashedTasks, setTrashedTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadTasks = useCallback(async () => {
@@ -16,6 +17,16 @@ export function useTasks(session, showToast) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }, [session]);
+
+  const loadTrashedTasks = useCallback(async () => {
+    if (!session) return;
+    try {
+      const data = await taskService.fetchTrashedTasks(session.user.id);
+      setTrashedTasks(data);
+    } catch (err) {
+      console.error('Failed to load trashed tasks:', err);
     }
   }, [session]);
 
@@ -57,13 +68,74 @@ export function useTasks(session, showToast) {
     }
   };
 
-  const handleDeleteTask = async (id) => {
+  // Soft delete — moves to trash bin (with confirmation)
+  const handleDeleteTask = async (id, skipConfirm = false) => {
+    // Find task name for confirmation
+    const task = tasks.find(tk => tk.id === id);
+    const taskTitle = task ? task.title : 'this task';
+    
+    if (!skipConfirm) {
+      const confirmed = window.confirm(`🗑️ Move "${taskTitle}" to Trash?\n\nIt will be auto-deleted after 15 days. You can restore it from the Trash Bin anytime.`);
+      if (!confirmed) return;
+    }
+
     try {
-      await taskService.deleteTask(id);
+      await taskService.trashTask(id);
       await loadTasks();
-      showToast('Deleted');
+      await loadTrashedTasks();
+      showToast('🗑️ Moved to Trash — auto-deletes in 15 days');
     } catch (err) {
-      console.error(err);
+      console.error('Delete (trash) failed:', err);
+      showToast('❌ Task delete failed — please try again');
+    }
+  };
+
+  // Restore from trash
+  const handleRestoreTask = async (id) => {
+    try {
+      await taskService.restoreTask(id);
+      await loadTasks();
+      await loadTrashedTasks();
+      showToast('✅ Task restored successfully');
+    } catch (err) {
+      console.error('Restore failed:', err);
+      showToast('❌ Restore failed — please try again');
+    }
+  };
+
+  // Permanent delete from trash
+  const handlePermanentDelete = async (id) => {
+    try {
+      await taskService.permanentDeleteTask(id);
+      await loadTrashedTasks();
+      showToast('Task permanently deleted');
+    } catch (err) {
+      console.error('Permanent delete failed:', err);
+      showToast('❌ Delete failed — please try again');
+    }
+  };
+
+  // Empty entire trash
+  const handleEmptyTrash = async () => {
+    try {
+      await taskService.emptyTrash(session.user.id);
+      setTrashedTasks([]);
+      showToast('🗑️ Trash emptied');
+    } catch (err) {
+      console.error('Empty trash failed:', err);
+      showToast('❌ Failed to empty trash — please try again');
+    }
+  };
+
+  // Auto-clean old trash (>15 days) — runs on login, only deletes tasks trashed 15+ days ago
+  const handleAutoCleanTrash = async () => {
+    try {
+      const result = await taskService.autoCleanTrash(session.user.id);
+      // Only reload if something was actually deleted
+      await loadTrashedTasks();
+    } catch (err) {
+      // Don't show error toast for auto-clean — it's a background operation
+      console.error('Auto-clean trash failed:', err);
     }
   };
 
@@ -78,15 +150,35 @@ export function useTasks(session, showToast) {
     }
   };
 
+  // ✅ NEW: Bulk import tasks from file (CSV/JSON)
+  const handleImportTasks = async (parsedTasks) => {
+    try {
+      const result = await taskService.importTasks(parsedTasks, session.user.id);
+      await loadTasks(); // Refresh task list after import
+      showToast(`${result.count} tasks imported ✓`);
+      return result;
+    } catch (err) {
+      console.error('Import failed:', err);
+      throw err;
+    }
+  };
+
   return {
     tasks,
+    trashedTasks,
     loading,
     setLoading,
     loadTasks,
+    loadTrashedTasks,
     handleAddTask,
     handleUpdateTask,
     handleToggleStatus,
     handleDeleteTask,
-    handleReorderTasks
+    handleRestoreTask,
+    handlePermanentDelete,
+    handleEmptyTrash,
+    handleAutoCleanTrash,
+    handleReorderTasks,
+    handleImportTasks
   };
 }

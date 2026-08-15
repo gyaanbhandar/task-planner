@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { VISUAL_THEME } from '../constants/taskConstants';
 import DraggableTaskList from './DraggableTaskList';
 import { exportTasksAsCSV, exportTasksAsJSON } from '../utils/exportUtils';
+import ImportTasks from './ImportTasks';
 
 export default function ViewToday({
   tasks,
@@ -23,9 +24,13 @@ export default function ViewToday({
   userName,
   userFullName,
   viewTitle,
-  userProfile
+  userProfile,
+  onImportTasks,
+  sortBy,
+  setSortBy
 }) {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const getGreeting = () => {
     const hr = new Date().getHours();
@@ -51,64 +56,87 @@ export default function ViewToday({
           <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>{formatIndianDate()}</p>
         </div>
 
-        {/* Export Tasks Button */}
-        <div style={{ position: 'relative' }}>
+        {/* Import & Export Buttons */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* ✅ NEW: Import Tasks Button */}
           <button
-            onClick={() => setShowExportMenu(!showExportMenu)}
+            onClick={() => setShowImportModal(true)}
             style={{
               padding: '8px 16px',
-              background: '#F1F5F9',
+              background: '#EEF2FF',
               border: `1px solid ${VISUAL_THEME.border}`,
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 600,
-              color: VISUAL_THEME.textSec,
+              color: VISUAL_THEME.accent,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
             }}
           >
-            📥 Export Tasks
+            📤 Import
           </button>
-          {showExportMenu && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              marginTop: '4px',
-              background: '#FFFFFF',
-              borderRadius: '10px',
-              border: `1px solid ${VISUAL_THEME.border}`,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-              zIndex: 1000,
-              overflow: 'hidden',
-              minWidth: '160px'
-            }}>
-              <button
-                onClick={() => { exportTasksAsCSV(tasks); setShowExportMenu(false); }}
-                style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: VISUAL_THEME.text, cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={e => e.target.style.background = '#F8FAFC'}
-                onMouseLeave={e => e.target.style.background = 'transparent'}
-              >
-                📄 Export as CSV
-              </button>
-              {canExportJSON ? (
+
+          {/* Export Tasks Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              style={{
+                padding: '8px 16px',
+                background: '#F1F5F9',
+                border: `1px solid ${VISUAL_THEME.border}`,
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: VISUAL_THEME.textSec,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              📥 Export
+            </button>
+            {showExportMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '4px',
+                background: '#FFFFFF',
+                borderRadius: '10px',
+                border: `1px solid ${VISUAL_THEME.border}`,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                zIndex: 1000,
+                overflow: 'hidden',
+                minWidth: '160px'
+              }}>
                 <button
-                  onClick={() => { exportTasksAsJSON(tasks); setShowExportMenu(false); }}
-                  style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: VISUAL_THEME.text, cursor: 'pointer', textAlign: 'left', borderTop: `1px solid ${VISUAL_THEME.borderAlt}` }}
+                  onClick={() => { exportTasksAsCSV(tasks); setShowExportMenu(false); }}
+                  style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: VISUAL_THEME.text, cursor: 'pointer', textAlign: 'left' }}
                   onMouseEnter={e => e.target.style.background = '#F8FAFC'}
                   onMouseLeave={e => e.target.style.background = 'transparent'}
                 >
-                  📋 Export as JSON
+                  📄 Export as CSV
                 </button>
-              ) : (
-                <div style={{ padding: '10px 16px', fontSize: '12px', color: '#94A3B8', borderTop: `1px solid ${VISUAL_THEME.borderAlt}` }}>
-                  🔒 JSON export — Pro plan required
-                </div>
-              )}
-            </div>
-          )}
+                {canExportJSON ? (
+                  <button
+                    onClick={() => { exportTasksAsJSON(tasks); setShowExportMenu(false); }}
+                    style={{ display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: VISUAL_THEME.text, cursor: 'pointer', textAlign: 'left', borderTop: `1px solid ${VISUAL_THEME.borderAlt}` }}
+                    onMouseEnter={e => e.target.style.background = '#F8FAFC'}
+                    onMouseLeave={e => e.target.style.background = 'transparent'}
+                  >
+                    📋 Export as JSON
+                  </button>
+                ) : (
+                  <div style={{ padding: '10px 16px', fontSize: '12px', color: '#94A3B8', borderTop: `1px solid ${VISUAL_THEME.borderAlt}` }}>
+                    🔒 JSON export — Pro plan required
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -147,11 +175,48 @@ export default function ViewToday({
 
       {/* Dynamic Draggable Task List */}
       <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '20px', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '16px', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '12px' : '0' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: VISUAL_THEME.text, margin: 0 }}>
             {viewTitle ? `${viewTitle} List` : 'Tasks List'}
           </h3>
-          <span style={{ fontSize: '11px', color: VISUAL_THEME.textSec }}>⋮⋮ Drag to reorder</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
+            {sortBy === 'manual' && (
+              <span style={{ fontSize: '11px', color: VISUAL_THEME.textSec, whiteSpace: 'nowrap' }}>⋮⋮ Drag to reorder</span>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: isMobile ? 1 : 'none' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: VISUAL_THEME.textSec, whiteSpace: 'nowrap' }}>Sort:</span>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                style={{
+                  padding: '6px 28px 6px 10px',
+                  borderRadius: '8px',
+                  border: `1px solid ${VISUAL_THEME.border}`,
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: VISUAL_THEME.text,
+                  background: sortBy !== 'manual' ? '#EEF2FF' : '#F8FAFC',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'10\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748B\' stroke-width=\'2.5\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center',
+                  flex: isMobile ? 1 : 'none',
+                  minWidth: isMobile ? '0' : '140px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="manual">🔀 Manual (Drag)</option>
+                <option value="date_asc">📅 Date ↑ (Nearest)</option>
+                <option value="date_desc">📅 Date ↓ (Farthest)</option>
+                <option value="priority">🔺 Priority (High→Low)</option>
+                <option value="time">🕒 Time (Earliest)</option>
+                <option value="created_newest">🆕 Newest First</option>
+                <option value="created_oldest">📦 Oldest First</option>
+                <option value="category">📂 Category (A-Z)</option>
+              </select>
+            </div>
+          </div>
         </div>
         
         <DraggableTaskList
@@ -163,8 +228,21 @@ export default function ViewToday({
           onDelete={handleDeleteTask}
           isMobile={isMobile}
           emptyMessage={`No tasks found in ${viewTitle || 'this view'}. Click "+ New Task" to add one!`}
+          dragEnabled={sortBy === 'manual'}
         />
       </div>
+
+      {/* ✅ NEW: Import Modal */}
+      {showImportModal && (
+        <ImportTasks
+          onImport={async (parsedTasks) => {
+            const result = await onImportTasks(parsedTasks);
+            return result;
+          }}
+          onClose={() => setShowImportModal(false)}
+          isMobile={isMobile}
+        />
+      )}
     </div>
   );
 }
