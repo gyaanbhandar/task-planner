@@ -200,15 +200,78 @@ export default function LandingPage() {
 
             {/* Dashboard Mockup */}
             <div style={{ maxWidth: 900, margin: '0 auto', borderRadius: 20, border: `1px solid ${theme.borderColor}`, background: theme.bgSecondary, padding: 12, boxShadow: isDark ? '0 25px 60px rgba(0,0,0,0.4)' : '0 25px 60px rgba(0,0,0,0.08)' }}>
-              <div style={{ borderRadius: 14, overflow: 'hidden', background: '#0F172A', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <div style={{ position: 'absolute', inset: 0, opacity: 0.04, backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-                <div style={{ textAlign: 'center', padding: 40, position: 'relative', zIndex: 2 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(79,70,229,0.2)', border: '1px solid rgba(79,70,229,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: ORANGE }}>
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              <div style={{ borderRadius: 14, overflow: 'hidden', background: '#0F172A', display: 'flex', minHeight: 420 }}>
+                {/* Sidebar */}
+                <div style={{ width: 200, background: '#0B0F19', borderRight: '1px solid #1E293B', padding: '20px 0', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ padding: '0 16px 20px', borderBottom: '1px solid #1E293B', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #4F46E5, #3730A3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M4 20L10.5 4L14 12"/><path d="M11 15L14 18L20 8" stroke="#F97316" strokeWidth="3"/></svg>
+                      </div>
+                      <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>AnuTask</span>
+                    </div>
                   </div>
-                  <h4 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 6 }}>AnuTask Operations Hub</h4>
-                  <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16 }}>Multi-tenant client management & task execution active.</p>
-                  <a href="https://app.anutask.com" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: ORANGE, textTransform: 'uppercase', letterSpacing: '0.08em', textDecoration: 'none' }}>Launch Dashboard →</a>
+                  {[
+                    { label: "Today's Tasks", icon: '☀️', active: true },
+                    { label: 'All Tasks', icon: '📋', active: false },
+                    { label: 'Calendar', icon: '📅', active: false },
+                    { label: 'Recurring', icon: '🔄', active: false },
+                  ].map((item, i) => (
+                    <div key={i} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: item.active ? 600 : 400, color: item.active ? '#fff' : '#64748B', background: item.active ? 'rgba(79,70,229,0.15)' : 'transparent', borderLeft: item.active ? '2px solid #4F46E5' : '2px solid transparent' }}>
+                      <span style={{ fontSize: 14 }}>{item.icon}</span> {item.label}
+                    </div>
+                  ))}
+                  <div style={{ padding: '16px 16px 0', borderTop: '1px solid #1E293B', marginTop: 12, paddingTop: 14 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Clients</div>
+                    {['Acme Corp', 'TechFlow Inc', 'Starter Co'].map((cl, i) => (
+                      <div key={i} style={{ padding: '6px 0', fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: ['#4F46E5', '#F97316', '#10B981'][i] }} /> {cl}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Main Content */}
+                <div style={{ flex: 1, padding: '20px 24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <div>
+                      <h4 style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>Today&apos;s Tasks</h4>
+                      <p style={{ color: '#64748B', fontSize: 11, margin: '2px 0 0' }}>Monday, 18 August 2026 • 5 tasks</p>
+                    </div>
+                    <div style={{ padding: '6px 14px', borderRadius: 8, background: '#4F46E5', color: '#fff', fontSize: 11, fontWeight: 600 }}>+ New Task</div>
+                  </div>
+                  {[
+                    { title: 'Client call with Acme Corp', time: '09:00 AM', priority: 'high', cat: 'Acme Corp', done: true },
+                    { title: 'Prepare Q3 report draft', time: '10:30 AM', priority: 'high', cat: 'TechFlow', done: true },
+                    { title: 'Review website mockups', time: '01:00 PM', priority: 'medium', cat: 'Starter Co', done: false },
+                    { title: 'Update project timeline', time: '03:00 PM', priority: 'medium', cat: 'Acme Corp', done: false },
+                    { title: 'Send weekly status email', time: '05:00 PM', priority: 'low', cat: 'General', done: false },
+                  ].map((task, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: task.done ? 'rgba(16,185,129,0.06)' : '#111827', border: `1px solid ${task.done ? 'rgba(16,185,129,0.15)' : '#1E293B'}`, marginBottom: 8 }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 5, border: task.done ? '2px solid #10B981' : '2px solid #475569', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: task.done ? '#10B981' : 'transparent' }}>
+                        {task.done && <svg fill="none" stroke="#fff" viewBox="0 0 24 24" width="11" height="11"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: task.done ? '#64748B' : '#E2E8F0', textDecoration: task.done ? 'line-through' : 'none' }}>{task.title}</div>
+                        <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>{task.cat}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 10, color: '#64748B' }}>{task.time}</span>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: task.priority === 'high' ? '#EF4444' : task.priority === 'medium' ? '#F59E0B' : '#3B82F6' }} />
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                    {[
+                      { label: 'Completed', value: '2/5', color: '#10B981' },
+                      { label: 'High Priority', value: '2', color: '#EF4444' },
+                      { label: 'Clients Active', value: '3', color: '#4F46E5' },
+                    ].map((stat, i) => (
+                      <div key={i} style={{ flex: 1, padding: '10px 12px', borderRadius: 8, background: '#111827', border: '1px solid #1E293B' }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: stat.color }}>{stat.value}</div>
+                        <div style={{ fontSize: 9, color: '#64748B', marginTop: 2 }}>{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
