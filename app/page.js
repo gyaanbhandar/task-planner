@@ -138,9 +138,9 @@ export default function LandingPage() {
               )}
             </button>
 
-            <a href="https://app.anutask.com/login" style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, textDecoration: 'none' }} className="desktop-only">Sign In</a>
+            <a href="https://www.anutask.com/dashboard/login" style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, textDecoration: 'none' }} className="desktop-only">Sign In</a>
 
-            <a href="https://app.anutask.com" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }} className="desktop-only">
+            <a href="https://www.anutask.com/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }} className="desktop-only">
               <span>Launch App</span>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
             </a>
@@ -162,8 +162,8 @@ export default function LandingPage() {
           {navLinks.map(n => (
             <a key={n.id} href={`#${n.id}`} onClick={(e) => { e.preventDefault(); scrollTo(n.id); }} style={{ display: 'block', padding: '16px 0', fontSize: 18, fontWeight: 600, color: theme.textPrimary, textDecoration: 'none', borderBottom: `1px solid ${theme.borderColor}` }}>{n.label}</a>
           ))}
-          <a href="https://app.anutask.com/login" style={{ display: 'block', padding: '16px 0', fontSize: 18, fontWeight: 600, color: theme.textPrimary, textDecoration: 'none', borderBottom: `1px solid ${theme.borderColor}` }}>Sign In</a>
-          <a href="https://app.anutask.com/signup" style={{ display: 'block', marginTop: 24, padding: '16px', borderRadius: 14, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, textDecoration: 'none', textAlign: 'center' }}>Start Free Forever →</a>
+          <a href="https://www.anutask.com/dashboard/login" style={{ display: 'block', padding: '16px 0', fontSize: 18, fontWeight: 600, color: theme.textPrimary, textDecoration: 'none', borderBottom: `1px solid ${theme.borderColor}` }}>Sign In</a>
+          <a href="https://www.anutask.com/dashboard/signup" style={{ display: 'block', marginTop: 24, padding: '16px', borderRadius: 14, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, textDecoration: 'none', textAlign: 'center' }}>Start Free Forever →</a>
         </div>
       )}
 
@@ -187,7 +187,7 @@ export default function LandingPage() {
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginBottom: 16 }}>
-              <a href="https://app.anutask.com/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, padding: '16px 32px', borderRadius: 14, textDecoration: 'none', boxShadow: '0 8px 30px rgba(249,115,22,0.3)' }}>
+              <a href="https://www.anutask.com/dashboard/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, padding: '16px 32px', borderRadius: 14, textDecoration: 'none', boxShadow: '0 8px 30px rgba(249,115,22,0.3)' }}>
                 Start Free Forever
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
               </a>
@@ -414,7 +414,7 @@ export default function LandingPage() {
                     ))}
                   </ul>
                 </div>
-                <a href="https://app.anutask.com/signup" style={{ display: 'block', width: '100%', textAlign: 'center', padding: 14, borderRadius: 12, fontSize: 15, fontWeight: 700, background: theme.bgSecondary, color: theme.textPrimary, border: `1px solid ${theme.borderColor}`, textDecoration: 'none' }}>Get Started Free →</a>
+                <a href="https://www.anutask.com/dashboard/signup" style={{ display: 'block', width: '100%', textAlign: 'center', padding: 14, borderRadius: 12, fontSize: 15, fontWeight: 700, background: theme.bgSecondary, color: theme.textPrimary, border: `1px solid ${theme.borderColor}`, textDecoration: 'none' }}>Get Started Free →</a>
               </div>
 
               {/* STARTER */}
@@ -434,7 +434,7 @@ export default function LandingPage() {
                     ))}
                   </ul>
                 </div>
-                <a href="https://app.anutask.com/signup" style={{ display: 'block', width: '100%', textAlign: 'center', padding: 14, borderRadius: 12, fontSize: 15, fontWeight: 700, background: INDIGO, color: '#fff', textDecoration: 'none' }}>Start with Starter →</a>
+                <a href="https://www.anutask.com/dashboard/signup" style={{ display: 'block', width: '100%', textAlign: 'center', padding: 14, borderRadius: 12, fontSize: 15, fontWeight: 700, background: INDIGO, color: '#fff', textDecoration: 'none' }}>Start with Starter →</a>
               </div>
 
               {/* PRO */}
@@ -454,7 +454,7 @@ export default function LandingPage() {
                     ))}
                   </ul>
                 </div>
-                <a href="https://app.anutask.com/signup" style={{ display: 'block', width: '100%', textAlign: 'center', padding: 14, borderRadius: 12, fontSize: 15, fontWeight: 700, background: ORANGE, color: '#fff', textDecoration: 'none', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }}>Choose Pro →</a>
+                <a href="https://www.anutask.com/dashboard/signup" style={{ display: 'block', width: '100%', textAlign: 'center', padding: 14, borderRadius: 12, fontSize: 15, fontWeight: 700, background: ORANGE, color: '#fff', textDecoration: 'none', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }}>Choose Pro →</a>
               </div>
 
             </div>
@@ -496,7 +496,7 @@ export default function LandingPage() {
         <section style={{ padding: '80px 24px', textAlign: 'center', background: isDark ? '#111827' : '#0B0F19', color: '#fff', overflow: 'hidden' }}>
           <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 800, marginBottom: 16 }}>Ready to organize your business?</h2>
           <p style={{ color: '#94A3B8', marginBottom: 32, maxWidth: 520, margin: '0 auto 32px', fontSize: 15 }}>Bring your tasks, clients, projects, and priorities into one simple workspace.</p>
-          <a href="https://app.anutask.com/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, padding: '18px 40px', borderRadius: 14, textDecoration: 'none', boxShadow: '0 8px 30px rgba(249,115,22,0.3)' }}>Start Free Forever →</a>
+          <a href="https://www.anutask.com/dashboard/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, padding: '18px 40px', borderRadius: 14, textDecoration: 'none', boxShadow: '0 8px 30px rgba(249,115,22,0.3)' }}>Start Free Forever →</a>
         </section>
       </main>
 
