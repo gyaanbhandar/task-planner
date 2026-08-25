@@ -3,7 +3,10 @@ import React from 'react';
 import { VISUAL_THEME } from '../constants/taskConstants';
 
 export default function ViewRecurring({ tasks, setInspectedTask, onViewDetail, handleDeleteTask, isMobile, sortBy, setSortBy }) {
-  let recurringItems = tasks.filter(t => t.type !== 'one-time' || t.time);
+  // Only genuine recurring tasks belong here. A one-time task must never appear,
+  // even if it has a time set. Recurring = daily / weekly / monthly schedule types.
+  const RECURRING_TYPES = ['daily', 'weekly', 'monthly'];
+  let recurringItems = tasks.filter(t => RECURRING_TYPES.includes(t.type));
 
   // Apply sorting
   if (sortBy && sortBy !== 'manual') {

@@ -8,6 +8,7 @@ import {
   formatPrice, getAnnualSavingsText, COMPARISON_SECTIONS,
 } from '../config/plans.config';
 import { getEffectivePlan, getSubscriptionDisplay, getAiUsageStatus, getUpgradeSuggestion } from '../services/entitlements';
+import { openCashfreeCheckout } from '../services/cashfreeCheckout';
 
 export default function ViewSettings({ session, userProfile, onProfileUpdate }) {
   const userMeta = session?.user?.user_metadata || {};
@@ -19,6 +20,17 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const [activatingPlan, setActivatingPlan] = useState(null);
+
+  // Feature flag — payments UI only shows when explicitly enabled.
+  // Set NEXT_PUBLIC_PAYMENTS_ENABLED=true once Cashfree Payment Gateway is approved.
+  const paymentsEnabled = process.env.NEXT_PUBLIC_PAYMENTS_ENABLED === 'true';
+
+  // Coupon state (per plan being purchased)
+  const [couponInput, setCouponInput] = useState('');
+  const [couponPlanId, setCouponPlanId] = useState(null); // which plan the coupon UI is open for
+  const [couponChecking, setCouponChecking] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount_amount, final_amount, currency, planId }
+  const [couponError, setCouponError] = useState('');
 
   // Billing states
   const [billingCycle, setBillingCycle] = useState(userProfile?.billing_cycle || 'monthly');
@@ -89,33 +101,134 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
     setSaving(false);
   };
 
-  const handleActivatePlan = async (planId) => {
-    setActivatingPlan(planId);
+  // Validate a coupon against a specific plan (server-side preview)
+  const handleApplyCoupon = async (planId) => {
+    if (!couponInput.trim()) { setCouponError('Enter a coupon code.'); return; }
+    setCouponChecking(true); setCouponError('');
     try {
-      const res = await fetch('/api/subscription', {
+      const res = await fetch('/api/coupons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: session.user.id,
+        body: JSON.stringify({ action: 'validate', code: couponInput.trim(), planId, billingCycle, currency }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAppliedCoupon({
+          code: data.code,
+          discount_amount: data.discount_amount,
+          final_amount: data.final_amount,
+          currency: data.currency,
           planId,
-          action: 'activate',
-          billingCycle,
-          currency,
+        });
+        setCouponError('');
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(data.error || 'Invalid coupon.');
+      }
+    } catch (err) {
+      setCouponError('Could not validate coupon. Try again.');
+    }
+    setCouponChecking(false);
+  };
+
+  const clearCoupon = () => {
+    setAppliedCoupon(null); setCouponInput(''); setCouponError(''); setCouponPlanId(null);
+  };
+
+  // Start a real Cashfree payment for a paid plan
+  const handleActivatePlan = async (planId) => {
+    // Free plan = direct downgrade (no payment)
+    if (planId === 'free') {
+      setActivatingPlan(planId);
+      try {
+        const res = await fetch('/api/subscription', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: session.user.id, action: 'downgrade_to_free' }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMessage(data.message);
+          onProfileUpdate?.({ ...userProfile, subscription_plan: 'free', subscription_status: 'free' });
+        } else setMessage('Error: ' + (data.error || 'Something went wrong'));
+      } catch (err) { setMessage('Error: ' + err.message); }
+      setActivatingPlan(null);
+      return;
+    }
+
+    setActivatingPlan(planId);
+    setMessage('');
+    try {
+      // Only send the coupon if it was validated for THIS plan
+      const couponCode = appliedCoupon && appliedCoupon.planId === planId ? appliedCoupon.code : undefined;
+
+      const res = await fetch('/api/payment', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_order',
+          userId: session.user.id,
+          planId, billingCycle, currency, couponCode,
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        setMessage(data.message);
-        if (onProfileUpdate) {
-          const updated = { ...userProfile, subscription_plan: planId, subscription_status: planId === 'free' ? 'free' : 'active', billing_cycle: billingCycle, currency };
-          onProfileUpdate(updated);
-        }
-      } else {
-        setMessage('Error: ' + (data.error || 'Something went wrong'));
+
+      if (!data.success) {
+        setMessage('Error: ' + (data.error || 'Could not start payment.'));
+        setActivatingPlan(null);
+        return;
       }
-    } catch (err) { setMessage('Error: ' + err.message); }
-    setActivatingPlan(null);
+
+      // Remember which order we're verifying after redirect back
+      try { sessionStorage.setItem('anutask_pending_order', data.order_id); } catch (e) {}
+
+      // Open Cashfree Checkout — redirects to return_url on completion
+      await openCashfreeCheckout(data.payment_session_id, data.env);
+      // If redirectTarget is _self, the browser navigates away here.
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+      setActivatingPlan(null);
+    }
   };
+
+  // On return from Cashfree, verify the order and reflect the new plan
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const returned = params.get('cf_return');
+    let orderId = params.get('cf_order_id');
+    if (!orderId) { try { orderId = sessionStorage.getItem('anutask_pending_order'); } catch (e) {} }
+    if (!returned && !orderId) return;
+    if (!session?.user?.id || !orderId) return;
+
+    (async () => {
+      try {
+        const res = await fetch('/api/payment', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verify', userId: session.user.id, orderId }),
+        });
+        const data = await res.json();
+        if (data.success && data.paid) {
+          setMessage('✅ ' + (data.message || 'Payment successful!'));
+          onProfileUpdate?.({ ...userProfile, subscription_plan: data.plan, subscription_status: 'active', billing_cycle: billingCycle, currency });
+        } else if (data.success && !data.paid) {
+          setMessage('⚠️ Payment was not completed. You have not been charged.');
+        }
+      } catch (e) {
+        // ignore — user can retry
+      } finally {
+        try { sessionStorage.removeItem('anutask_pending_order'); } catch (e) {}
+        // Clean the URL so refreshes don't re-verify
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('cf_order_id');
+          url.searchParams.delete('cf_return');
+          window.history.replaceState({}, '', url.pathname + url.search);
+        } catch (e) {}
+        setActivatingPlan(null);
+        clearCoupon();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const handleToggleNotifications = async () => {
     if (typeof window === 'undefined') return;
@@ -382,7 +495,9 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
           <div style={cardStyle}>
             <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 8px 0' }}>📋 Choose Your Plan</h3>
             <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: '0 0 20px 0' }}>
-              Payment gateway coming soon — plans shown for preview.
+              {paymentsEnabled
+                ? 'Secure checkout powered by Cashfree. Have a coupon? Apply it before paying.'
+                : 'Payment gateway is being activated. You can preview plans here — checkout will open shortly.'}
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
@@ -392,6 +507,9 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
                 const isPro = plan.isRecommended;
                 const isComingSoon = plan.isComingSoon;
                 const price = getPrice(planId);
+                const isPurchasable = planId !== 'free' && !isComingSoon;
+                const couponForThisPlan = appliedCoupon && appliedCoupon.planId === planId ? appliedCoupon : null;
+                const discountedPrice = couponForThisPlan ? couponForThisPlan.final_amount : null;
 
                 return (
                   <div key={planId} style={{
@@ -414,13 +532,32 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
 
                     {/* Price */}
                     <div style={{ marginBottom: '16px' }}>
-                      <span style={{ fontSize: '28px', fontWeight: 800, color: '#0F172A' }}>
-                        {price === 0 ? 'Free' : formatPrice(price, currency)}
-                      </span>
-                      {price > 0 && (
-                        <span style={{ fontSize: '13px', color: '#64748B' }}>
-                          {billingCycle === 'yearly' ? '/year' : '/month'}
-                        </span>
+                      {discountedPrice != null ? (
+                        <div>
+                          <span style={{ fontSize: '15px', color: '#94A3B8', textDecoration: 'line-through', marginRight: '6px' }}>
+                            {formatPrice(price, currency)}
+                          </span>
+                          <span style={{ fontSize: '28px', fontWeight: 800, color: '#059669' }}>
+                            {formatPrice(discountedPrice, currency)}
+                          </span>
+                          <span style={{ fontSize: '13px', color: '#64748B' }}>
+                            {billingCycle === 'yearly' ? '/year' : '/month'}
+                          </span>
+                          <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600, marginTop: '2px' }}>
+                            Coupon {couponForThisPlan.code} applied — you save {formatPrice(couponForThisPlan.discount_amount, currency)}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: '28px', fontWeight: 800, color: '#0F172A' }}>
+                            {price === 0 ? 'Free' : formatPrice(price, currency)}
+                          </span>
+                          {price > 0 && (
+                            <span style={{ fontSize: '13px', color: '#64748B' }}>
+                              {billingCycle === 'yearly' ? '/year' : '/month'}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
 
@@ -439,6 +576,47 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
                       )}
                     </div>
 
+                    {/* Coupon field — only for purchasable, non-current plans, when payments live */}
+                    {paymentsEnabled && isPurchasable && !isCurrentPlan && (
+                      <div style={{ marginBottom: '12px' }}>
+                        {couponForThisPlan ? (
+                          <button
+                            onClick={clearCoupon}
+                            style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            ✓ {couponForThisPlan.code} — remove
+                          </button>
+                        ) : couponPlanId === planId ? (
+                          <div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <input
+                                type="text"
+                                value={couponInput}
+                                onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                                placeholder="Coupon code"
+                                style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '12px', boxSizing: 'border-box', textTransform: 'uppercase' }}
+                              />
+                              <button
+                                onClick={() => handleApplyCoupon(planId)}
+                                disabled={couponChecking}
+                                style={{ padding: '8px 12px', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFF', fontSize: '12px', fontWeight: 600, cursor: 'pointer', opacity: couponChecking ? 0.6 : 1 }}
+                              >
+                                {couponChecking ? '...' : 'Apply'}
+                              </button>
+                            </div>
+                            {couponError && <div style={{ fontSize: '11px', color: '#EF4444', marginTop: '4px', textAlign: 'left' }}>{couponError}</div>}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setCouponPlanId(planId); setCouponInput(''); setCouponError(''); }}
+                            style={{ width: '100%', padding: '8px', borderRadius: '8px', border: `1px dashed ${VISUAL_THEME.border}`, background: 'transparent', color: VISUAL_THEME.accent, fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            🎟️ Have a coupon?
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     {/* CTA Button */}
                     {isComingSoon ? (
                       <button disabled style={{
@@ -447,6 +625,14 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
                       }}>
                         Coming Soon
                       </button>
+                    ) : !paymentsEnabled && isPurchasable ? (
+                      // Payments not enabled yet — show a disabled "Coming Soon" for paid plans
+                      <button disabled title="Payment gateway is being activated by Cashfree. You'll be able to upgrade here as soon as it's live." style={{
+                        width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 600, fontSize: '13px', cursor: 'not-allowed',
+                        background: '#F1F5F9', color: '#94A3B8', border: '1px dashed #CBD5E1',
+                      }}>
+                        🔒 Payment Gateway Coming Soon
+                      </button>
                     ) : (
                       <button
                         onClick={() => !isCurrentPlan && handleActivatePlan(planId)}
@@ -454,13 +640,19 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
                         style={{
                           width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 600, fontSize: '13px',
                           cursor: isCurrentPlan ? 'default' : 'pointer',
-                          background: isCurrentPlan ? '#E2E8F0' : VISUAL_THEME.accent,
-                          color: isCurrentPlan ? '#64748B' : '#FFF',
-                          border: 'none',
+                          background: isCurrentPlan ? '#E2E8F0' : planId === 'free' ? '#F1F5F9' : VISUAL_THEME.accent,
+                          color: isCurrentPlan ? '#64748B' : planId === 'free' ? '#475569' : '#FFF',
+                          border: planId === 'free' && !isCurrentPlan ? `1px solid ${VISUAL_THEME.border}` : 'none',
                           opacity: activatingPlan === planId ? 0.6 : 1,
                         }}
                       >
-                        {isCurrentPlan ? '✓ Current Plan' : activatingPlan === planId ? 'Processing...' : `🔒 Payment Gateway Coming Soon`}
+                        {isCurrentPlan
+                          ? '✓ Current Plan'
+                          : activatingPlan === planId
+                            ? 'Processing...'
+                            : planId === 'free'
+                              ? 'Switch to Free'
+                              : `Upgrade — Pay ${formatPrice(discountedPrice != null ? discountedPrice : price, currency)}`}
                       </button>
                     )}
                   </div>
@@ -473,7 +665,7 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
           <div style={cardStyle}>
             <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 8px 0' }}>💳 Payment Information</h3>
             <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>
-              Payment gateway integration coming soon. You&apos;ll be able to manage your payment method, view invoices, and update billing details here.
+              Payments are processed securely by Cashfree Payments. Your card and banking details are never stored on AnuTask servers.
             </p>
             <div style={{ marginTop: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#10B981' }}>

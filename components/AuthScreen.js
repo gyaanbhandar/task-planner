@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VISUAL_THEME } from '../constants/taskConstants';
 import { authService } from '../services/authService';
 
@@ -11,6 +11,15 @@ export default function AuthScreen({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+
+  // Open in Sign Up mode when the homepage sends people via /dashboard?mode=signup
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'signup') setIsLogin(false);
+    } catch (e) { /* no-op */ }
+  }, []);
 
   const handleSubmit = async () => {
     setError(''); 

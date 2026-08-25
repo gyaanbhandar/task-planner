@@ -148,6 +148,47 @@ export const taskService = {
     return data;
   },
 
+  // Auto-clean: move completed ('done') tasks to Trash 30+ days after completion.
+  // We trash (soft delete) rather than hard-delete so users still have the 15-day
+  // Trash safety window to restore. Based on completed_at, NOT trashed_at.
+  async autoCleanCompleted(userId) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString();
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ status: 'trashed', trashed_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('status', 'done')
+      .not('completed_at', 'is', null)
+      .lt('completed_at', cutoffStr)
+      .select('id');
+
+    if (error) {
+      console.error('autoCleanCompleted error:', error);
+      throw error;
+    }
+    return data || [];
+  },
+
+  // Manual: user clears ALL currently completed tasks (moves them to Trash so
+  // they can still be restored within 15 days).
+  async clearCompleted(userId) {
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ status: 'trashed', trashed_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('status', 'done')
+      .select('id');
+
+    if (error) {
+      console.error('clearCompleted error:', error);
+      throw error;
+    }
+    return data || [];
+  },
+
   // Empty entire trash for a user
   async emptyTrash(userId) {
     const { error } = await supabase

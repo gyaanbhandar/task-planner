@@ -106,6 +106,11 @@ export const subscriptionService = {
     return data || [];
   },
 
+  // Alias — dashboard calls addClient()
+  async addClient(userId, name) {
+    return this.createClient(userId, name);
+  },
+
   // Create client
   async createClient(userId, name) {
     const { data, error } = await supabase

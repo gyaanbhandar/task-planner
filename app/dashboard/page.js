@@ -10,6 +10,8 @@ import { authService } from '../../services/authService';
 import { taskService } from '../../services/taskService';
 import { notificationService } from '../../services/notificationService';
 import { subscriptionService, PLAN_LIMITS } from '../../services/subscriptionService';
+import { canCreateClient, canCreateCategory, getUserEntitlements, getUpgradeSuggestion } from '../../services/entitlements';
+import { formatLimit } from '../../config/plans.config';
 import { useTasks } from '../../hooks/useTasks';
 
 import ViewToday from '../../components/ViewToday';
@@ -118,7 +120,7 @@ export default function AnuTaskOS() {
   const {
     tasks, trashedTasks, loading: tasksLoading, loadTasks, loadTrashedTasks,
     handleToggleStatus, handleDeleteTask, handleRestoreTask, handlePermanentDelete,
-    handleEmptyTrash, handleAutoCleanTrash, handleReorderTasks, handleImportTasks
+    handleEmptyTrash, handleAutoCleanTrash, handleAutoCleanCompleted, handleClearCompleted, handleReorderTasks, handleImportTasks
   } = useTasks(session, showToast);
 
   // Get user's actual full name
@@ -149,6 +151,8 @@ export default function AnuTaskOS() {
         await loadTrashedTasks();
         // Auto-clean runs AFTER loading — only removes tasks trashed > 15 days ago
         await handleAutoCleanTrash();
+        // Also auto-clean completed tasks older than 30 days (moves them to Trash)
+        await handleAutoCleanCompleted();
       } catch (err) {
         console.error('Trash init failed:', err);
       }
@@ -202,6 +206,46 @@ export default function AnuTaskOS() {
       }
     };
     setupProfile();
+  }, [session]);
+
+  // Verify a Cashfree payment when the user is redirected back to /dashboard.
+  // Runs regardless of which view is active, so the plan activates even if the
+  // user is not on the Settings tab. ViewSettings has its own copy for when the
+  // user completes payment from that screen; both are idempotent server-side.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !session?.user?.id) return;
+    const params = new URLSearchParams(window.location.search);
+    let orderId = params.get('cf_order_id');
+    if (!orderId) { try { orderId = sessionStorage.getItem('anutask_pending_order'); } catch (e) {} }
+    if (!orderId) return;
+
+    (async () => {
+      try {
+        const res = await fetch('/api/payment', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'verify', userId: session.user.id, orderId }),
+        });
+        const data = await res.json();
+        if (data.success && data.paid) {
+          const fresh = await subscriptionService.getUserProfile(session.user.id);
+          setUserProfile(fresh);
+          showToast(`✅ ${data.message || 'Payment successful!'}`);
+        } else if (data.success && !data.paid) {
+          showToast('⚠️ Payment not completed — you were not charged');
+        }
+      } catch (e) {
+        // ignore; user can retry from Settings
+      } finally {
+        try { sessionStorage.removeItem('anutask_pending_order'); } catch (e) {}
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('cf_order_id');
+          url.searchParams.delete('cf_return');
+          window.history.replaceState({}, '', url.pathname + url.search);
+        } catch (e) {}
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   // Request notification permission on app load
@@ -327,6 +371,17 @@ export default function AnuTaskOS() {
       setCustomCategories(prev => prev.map(c => c.id === editingCategory ? { ...c, name: newCatName, icon: newCatIcon } : c));
       setEditingCategory(null);
     } else {
+      // Enforce plan category limit before adding a new category
+      if (!canCreateCategory(userProfile, customCategories.length)) {
+        const ent = getUserEntitlements(userProfile);
+        const sug = getUpgradeSuggestion(userProfile, 'category_limit');
+        alert(
+          `Your ${ent.planName} plan allows up to ${formatLimit(ent.limits.maxCategories)} categories.\n\n` +
+          (sug ? `Upgrade to ${sug.targetPlan.name} for ${formatLimit(sug.targetPlan.limits.maxCategories)} categories. Go to Settings → Billing to upgrade.` : '')
+        );
+        setNewCatName(''); setNewCatIcon('📂');
+        return;
+      }
       setCustomCategories(prev => [...prev, { id: 'cat_' + Date.now(), name: newCatName, icon: newCatIcon, color: '#6366F1', bg: 'rgba(99,102,241,0.04)' }]);
     }
     setNewCatName(''); setNewCatIcon('📂');
@@ -341,6 +396,17 @@ export default function AnuTaskOS() {
         setClientsList(prev => prev.map(c => c.id === editingClient ? { ...c, name: newClientName } : c));
         setEditingClient(null);
       } else {
+        // Enforce plan limit before creating a new client
+        if (!canCreateClient(userProfile, clientsList.length)) {
+          const ent = getUserEntitlements(userProfile);
+          const sug = getUpgradeSuggestion(userProfile, 'client_limit');
+          alert(
+            `Your ${ent.planName} plan allows up to ${formatLimit(ent.limits.maxClients)} client${ent.limits.maxClients === 1 ? '' : 's'}.\n\n` +
+            (sug ? `Upgrade to ${sug.targetPlan.name} for ${formatLimit(sug.targetPlan.limits.maxClients)} clients. Go to Settings → Billing to upgrade.` : '')
+          );
+          setNewClientName('');
+          return;
+        }
         // Add to DB
         const newClient = await subscriptionService.addClient(session.user.id, newClientName);
         if (newClient) {
@@ -509,7 +575,7 @@ export default function AnuTaskOS() {
           })()}
 
           {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} onImportTasks={handleImportTasks} sortBy={sortBy} setSortBy={setSortBy} />
+            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} onImportTasks={handleImportTasks} onClearCompleted={handleClearCompleted} sortBy={sortBy} setSortBy={setSortBy} />
 
 
           )}

@@ -139,6 +139,37 @@ export function useTasks(session, showToast) {
     }
   };
 
+  // Auto-clean completed tasks older than 30 days — runs on login (background, silent)
+  const handleAutoCleanCompleted = async () => {
+    try {
+      const removed = await taskService.autoCleanCompleted(session.user.id);
+      if (removed && removed.length > 0) {
+        await loadTasks();
+        await loadTrashedTasks();
+      }
+    } catch (err) {
+      // Silent — background operation
+      console.error('Auto-clean completed failed:', err);
+    }
+  };
+
+  // Manual: clear all completed tasks now (moves to Trash, restorable for 15 days)
+  const handleClearCompleted = async () => {
+    const completedCount = tasks.filter(t => t.status === 'done').length;
+    if (completedCount === 0) { showToast('No completed tasks to clear'); return; }
+    const confirmed = window.confirm(`🧹 Clear ${completedCount} completed task${completedCount === 1 ? '' : 's'}?\n\nThey'll move to Trash and can be restored within 15 days.`);
+    if (!confirmed) return;
+    try {
+      const removed = await taskService.clearCompleted(session.user.id);
+      await loadTasks();
+      await loadTrashedTasks();
+      showToast(`🧹 Cleared ${removed.length} completed task${removed.length === 1 ? '' : 's'}`);
+    } catch (err) {
+      console.error('Clear completed failed:', err);
+      showToast('❌ Failed to clear completed tasks');
+    }
+  };
+
   // Drag-and-drop reorder handler
   const handleReorderTasks = async (reorderedTasks) => {
     setTasks(reorderedTasks);
@@ -178,6 +209,8 @@ export function useTasks(session, showToast) {
     handlePermanentDelete,
     handleEmptyTrash,
     handleAutoCleanTrash,
+    handleAutoCleanCompleted,
+    handleClearCompleted,
     handleReorderTasks,
     handleImportTasks
   };

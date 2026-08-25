@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { VISUAL_THEME } from '../constants/taskConstants';
 import { authService } from '../services/authService';
+import CouponManager from './CouponManager';
 
 export default function ViewAdmin({ session }) {
   const [users, setUsers] = useState([]);
@@ -232,6 +233,9 @@ export default function ViewAdmin({ session }) {
           </div>
         </div>
       </div>
+
+      {/* Coupon Management */}
+      <CouponManager />
     </div>
   );
 }

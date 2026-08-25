@@ -4,6 +4,7 @@ import { VISUAL_THEME } from '../constants/taskConstants';
 import DraggableTaskList from './DraggableTaskList';
 import { exportTasksAsCSV, exportTasksAsJSON } from '../utils/exportUtils';
 import ImportTasks from './ImportTasks';
+import { canExportFormat } from '../services/entitlements';
 
 export default function ViewToday({
   tasks,
@@ -26,6 +27,7 @@ export default function ViewToday({
   viewTitle,
   userProfile,
   onImportTasks,
+  onClearCompleted,
   sortBy,
   setSortBy
 }) {
@@ -43,8 +45,8 @@ export default function ViewToday({
   // Show actual user name (from profile DB → user_metadata → email fallback)
   const cleanName = userFullName || (userName ? (userName.split('@')[0].charAt(0).toUpperCase() + userName.split('@')[0].slice(1)) : 'User');
 
-  // Check export permissions based on plan
-  const canExportJSON = !userProfile || userProfile.subscription_plan !== 'starter';
+  // Check export permissions based on effective plan (Free = CSV only; Starter/Pro/Business = CSV + JSON)
+  const canExportJSON = canExportFormat(userProfile, 'json');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', boxSizing: 'border-box' }}>
@@ -58,6 +60,29 @@ export default function ViewToday({
 
         {/* Import & Export Buttons */}
         <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Clear Completed — visible when there are completed tasks */}
+          {countCompleted > 0 && onClearCompleted && (
+            <button
+              onClick={onClearCompleted}
+              title="Clear completed tasks (moves them to Trash, restorable for 15 days). Completed tasks also auto-clear after 30 days."
+              style={{
+                padding: '8px 16px',
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#DC2626',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              🧹 Clear Completed
+            </button>
+          )}
+
           {/* ✅ NEW: Import Tasks Button */}
           <button
             onClick={() => setShowImportModal(true)}
