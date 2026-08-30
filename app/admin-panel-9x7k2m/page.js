@@ -1,496 +1,248 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { VISUAL_THEME, CATEGORIES, CLIENTS, PRIORITY_CONFIG } from '../../constants/taskConstants';
-import { todayStr, formatIndianDate } from '../../utils/dateUtils';
-import Sidebar from '../../components/Sidebar';
-import AuthScreen from '../../components/AuthScreen';
-import IconPicker from '../../components/IconPicker';
+// =====================================================
+// SUPER ADMIN PANEL  —  https://www.anutask.com/admin-panel-9x7k2m
+// -----------------------------------------------------
+// This is a STANDALONE admin shell. It shares AnuTask's logo and brand
+// but is a completely separate interface from the user app:
+//   • No task views, no "New Task", no user Sidebar.
+//   • Its own dark theme + admin navigation.
+//   • Hard access gate: a visitor must be a verified SUPER ADMIN
+//     (allowlisted email AND a row in admin_users). Any ordinary user
+//     who logs in here is rejected and cannot see admin data.
+// =====================================================
+
+import React, { useState, useEffect } from 'react';
 import { authService } from '../../services/authService';
-import { taskService } from '../../services/taskService';
-import { notificationService } from '../../services/notificationService';
-import { useTasks } from '../../hooks/useTasks';
+import ViewAdmin from '../../components/ViewAdmin';
+import CouponManager from '../../components/CouponManager';
 
-import ViewToday from '../../components/ViewToday';
-import ViewCalendar from '../../components/ViewCalendar';
-import ViewAllTasks from '../../components/ViewAllTasks';
-import ViewRecurring from '../../components/ViewRecurring';
-import ViewSettings from '../../components/ViewSettings';
-import RichTextEditor from '../../components/RichTextEditor';
-
-const convert12to24 = (time12) => {
-  if (!time12) return '09:00';
-  const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!match) return '09:00';
-  let [_, h, m, p] = match;
-  let hour = parseInt(h, 10);
-  if (p.toUpperCase() === 'PM' && hour < 12) hour += 12;
-  if (p.toUpperCase() === 'AM' && hour === 12) hour = 0;
-  return `${String(hour).padStart(2, '0')}:${m}`;
+const T = {
+  bg: '#0B1120',
+  sidebar: '#0D1424',
+  panel: '#111827',
+  border: '#1F2937',
+  text: '#F1F5F9',
+  textSec: '#94A3B8',
+  textDim: '#64748B',
+  accent: '#6366F1',
+  accentSoft: 'rgba(99,102,241,0.15)',
+  red: '#EF4444',
+  green: '#10B981',
 };
 
-const convert24to12 = (time24) => {
-  if (!time24) return '09:00 AM';
-  const parts = time24.split(':');
-  let hour = parseInt(parts[0], 10);
-  const min = parts[1] || '00';
-  const period = hour >= 12 ? 'PM' : 'AM';
-  hour = hour % 12;
-  if (hour === 0) hour = 12;
-  return `${String(hour).padStart(2, '0')}:${min} ${period}`;
-};
+// AnuTask logo — same mark as the user app, so branding stays consistent.
+function Logo({ size = 36 }) {
+  return (
+    <svg viewBox="0 0 120 120" width={size} height={size} xmlns="http://www.w3.org/2000/svg">
+      <rect width="120" height="120" rx="24" fill="#6366F1" />
+      <path d="M28 88L52 32L66 56" stroke="#FFFFFF" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M56 68L68 80L92 44" stroke="#F97316" strokeWidth="9" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-export default function AnuTaskOS() {
+const NAV = [
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'coupons', label: 'Coupons & Offers', icon: '🎟️' },
+];
+
+export default function AdminPanelPage() {
   const [session, setSession] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  
-  const [currentView, setCurrentView] = useState('today'); 
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [activeClient, setActiveClient] = useState(null);
-  const [dashboardFilter, setDashboardFilter] = useState('today');
-  
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [inspectedTask, setInspectedTask] = useState(null);
-  const [editTime, setEditTime] = useState('09:00');
-  
-  const [customCategories, setCustomCategories] = useState(CATEGORIES);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('📂');
-  const [showIconPicker, setShowIconPicker] = useState(false);
-  
-  const [clientsList, setClientsList] = useState(CLIENTS);
-  const [newClientName, setNewClientName] = useState('');
-  const [editingClient, setEditingClient] = useState(null);
+  const [phase, setPhase] = useState('loading'); // loading | login | denied | ready
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [view, setView] = useState('dashboard');
+  const [mobileNav, setMobileNav] = useState(false);
 
-  const [aiPlanOutput, setAiPlanOutput] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
+  // login form
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginErr, setLoginErr] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
 
-  const [modalTitle, setModalTitle] = useState('');
-  const [modalDesc, setModalDesc] = useState('');
-  const [modalCat, setModalCat] = useState('personal');
-  const [modalSub, setModalSub] = useState('none'); 
-  const [modalPriority, setModalPriority] = useState('medium');
-  const [modalDate, setModalDate] = useState(todayStr());
-  const [modalTime, setModalTime] = useState('09:00');
-  const [modalFrequency, setModalFrequency] = useState('one-time');
-
-  const notifiedTasksRef = useRef(new Set());
-
-  const dummyToast = (msg) => console.log(`[Notification]: ${msg}`);
-  const {
-    tasks, loading: tasksLoading, loadTasks,
-    handleToggleStatus, handleDeleteTask, handleReorderTasks, handleImportTasks
-  } = useTasks(session, dummyToast);
-
-  // Get user's actual full name
-  const userFullName = session?.user?.user_metadata?.full_name || '';
+  const verify = async (s) => {
+    if (!s) { setPhase('login'); return; }
+    const ok = await authService.isAdmin(s.user.id, s.user.email);
+    if (ok) { setIsAdmin(true); setPhase('ready'); }
+    else { setIsAdmin(false); setPhase('denied'); }
+  };
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    authService.getSession().then(s => { setSession(s); setAuthLoading(false); });
-    const sub = authService.onAuthStateChange(s => setSession(s));
+    authService.getSession().then(async (s) => {
+      setSession(s);
+      await verify(s);
+    });
+    const sub = authService.onAuthStateChange(async (s) => {
+      setSession(s);
+      if (!s) { setIsAdmin(false); setPhase('login'); }
+    });
     return () => sub.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (session) loadTasks();
-  }, [session, loadTasks]);
-
-  const handleSelectInspectedTask = (task) => {
-    setInspectedTask(task);
-    if (!task) return;
-    setEditTime(convert12to24(task.time || '09:00 AM'));
-  };
-
-  const playChimeSound = () => {
+  const handleLogin = async () => {
+    setLoginErr(''); setLoggingIn(true);
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    if (!tasks || tasks.length === 0) return;
-    const interval = setInterval(() => {
-      const isEnabled = localStorage.getItem('notifications_enabled') !== 'false';
-      if (!isEnabled) return;
-      const now = new Date();
-      let currentHour = now.getHours();
-      const currentMinute = String(now.getMinutes()).padStart(2, '0');
-      const period = currentHour >= 12 ? 'PM' : 'AM';
-      currentHour = currentHour % 12 || 12;
-      const currentTimeString = `${String(currentHour).padStart(2, '0')}:${currentMinute} ${period}`;
-      tasks.forEach(t => {
-        if (t.status === 'pending' && (t.deadline === todayStr() || t.type === 'daily') && (t.time || '').toLowerCase() === currentTimeString.toLowerCase()) {
-          if (!notifiedTasksRef.current.has(t.id)) {
-            notifiedTasksRef.current.add(t.id);
-            playChimeSound();
-            // Send actual Windows/Mac notification popup
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(`⏰ Task Reminder: ${t.title}`, {
-                body: `${t.time} • ${t.subcategory || 'General'}`,
-                icon: '⚡',
-                tag: `task-${t.id}`
-              });
-            }
-            notificationService.send(`⏰ Task Reminder: ${t.title}`, `${t.time} • ${t.subcategory || 'General'}`);
-          }
-        }
-      });
-    }, 20000);
-    return () => clearInterval(interval);
-  }, [tasks]);
-
-  if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading AnuTask...</div>;
-  if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
-
-  const getViewTitle = () => {
-    if (currentView === 'today') return "Today's Tasks";
-    if (currentView === 'upcoming') return "Upcoming Tasks";
-    if (currentView === 'calendar') return "Calendar View";
-    if (currentView === 'all_tasks') return "All Tasks";
-    if (currentView === 'ai_planner') return "AI Planner";
-    if (currentView === 'recurring') return "Recurring Tasks";
-    if (currentView === 'manage_categories') return "Manage Categories";
-    if (currentView === 'settings') return "Settings";
-    if (currentView === 'category' && activeCategory) {
-      const catObj = customCategories.find(c => c.id === activeCategory);
-      return catObj ? catObj.name : "Category";
+      const { data, error } = await authService.signIn(email, password);
+      if (error) { setLoginErr(error.message); setLoggingIn(false); return; }
+      const s = data.session;
+      setSession(s);
+      // Gate immediately — non-admins are signed out so their session
+      // can't be reused to browse the admin panel.
+      const ok = await authService.isAdmin(s.user.id, s.user.email);
+      if (!ok) {
+        await authService.signOut();
+        setSession(null);
+        setLoginErr('This account is not authorized for the admin panel.');
+        setPhase('login');
+      } else {
+        setIsAdmin(true);
+        setPhase('ready');
+      }
+    } catch (e) {
+      setLoginErr(e.message || 'Login failed.');
     }
-    if (currentView === 'client_workspace' && activeClient) {
-      const clientObj = clientsList.find(c => c.id === activeClient);
-      return clientObj ? clientObj.name : "Client Workspace";
-    }
-    return "AnuTask";
+    setLoggingIn(false);
   };
 
-  const handleCreateTaskSubmit = async () => {
-    if (!modalTitle.trim()) return;
-    const formatted12hTime = convert24to12(modalTime);
-    let subValue = 'General';
-    if (modalCat === 'clients' && modalSub !== 'none') {
-      const cl = clientsList.find(c => c.id === modalSub);
-      subValue = cl ? cl.name : 'General';
-    } else if (modalSub !== 'none') subValue = modalSub;
-    try {
-      await taskService.createTask({ title: modalTitle, description: modalDesc.trim(), time: formatted12hTime, category: modalCat, subcategory: subValue, priority: modalPriority, type: modalFrequency, deadline: modalDate }, session.user.id);
-      await loadTasks();
-      setShowCreateModal(false); setModalTitle(''); setModalDesc(''); setModalSub('none');
-    } catch (err) { alert('Error: ' + (err.message || err)); }
+  const logout = async () => {
+    await authService.signOut();
+    setSession(null);
+    setIsAdmin(false);
+    setPhase('login');
   };
 
-  const executeCategoryOperation = () => {
-    if (!newCatName.trim()) return;
-    if (editingCategory) {
-      setCustomCategories(prev => prev.map(c => c.id === editingCategory ? { ...c, name: newCatName, icon: newCatIcon } : c));
-      setEditingCategory(null);
-    } else {
-      setCustomCategories(prev => [...prev, { id: 'cat_' + Date.now(), name: newCatName, icon: newCatIcon, color: '#6366F1', bg: 'rgba(99,102,241,0.04)' }]);
-    }
-    setNewCatName(''); setNewCatIcon('📂');
-  };
+  // ---------- LOADING ----------
+  if (phase === 'loading') {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.bg, color: T.textSec, fontSize: '14px', gap: '10px' }}>
+        <Logo size={26} /> Verifying admin access…
+      </div>
+    );
+  }
 
-  const executeClientOperation = () => {
-    if (!newClientName.trim()) return;
-    if (editingClient) {
-      setClientsList(prev => prev.map(c => c.id === editingClient ? { ...c, name: newClientName } : c));
-      setEditingClient(null);
-    } else {
-      setClientsList(prev => [...prev, { id: 'client_' + Date.now(), name: newClientName }]);
-    }
-    setNewClientName('');
-  };
+  // ---------- LOGIN ----------
+  if (phase === 'login') {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.bg, padding: '20px' }}>
+        <div style={{ width: '100%', maxWidth: '380px', background: T.panel, border: `1px solid ${T.border}`, borderRadius: '18px', padding: '32px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+            <Logo size={44} />
+            <div style={{ fontSize: '18px', fontWeight: 800, color: T.text }}>AnuTask Admin</div>
+            <div style={{ fontSize: '12px', color: T.textDim, textAlign: 'center' }}>Restricted area — super administrators only.</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input type="email" placeholder="Admin email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} style={loginInput} />
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} style={loginInput} />
+            <button onClick={handleLogin} disabled={loggingIn || !email || !password} style={{ padding: '12px', borderRadius: '10px', border: 'none', background: T.accent, color: '#FFF', fontWeight: 700, fontSize: '14px', cursor: 'pointer', opacity: loggingIn ? 0.7 : 1 }}>
+              {loggingIn ? 'Signing in…' : 'Sign in'}
+            </button>
+            {loginErr && <div style={{ fontSize: '12px', color: T.red, fontWeight: 600, textAlign: 'center' }}>{loginErr}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const triggerAiPlanCall = async () => {
-    setAiLoading(true);
-    try {
-      const res = await taskService.fetchAiPlan(tasks.map(t => `- ${t.title} [${t.priority}]`).join('\n'));
-      setAiPlanOutput(res);
-    } catch(e) { setAiPlanOutput('AI planner error.'); }
-    setAiLoading(false);
-  };
+  // ---------- DENIED (logged in, but not an admin) ----------
+  if (phase === 'denied') {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.bg, padding: '20px' }}>
+        <div style={{ width: '100%', maxWidth: '400px', background: T.panel, border: `1px solid ${T.border}`, borderRadius: '18px', padding: '32px', textAlign: 'center', boxSizing: 'border-box' }}>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔒</div>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: T.text, marginBottom: '6px' }}>Access denied</div>
+          <div style={{ fontSize: '13px', color: T.textSec, marginBottom: '20px' }}>
+            You're signed in as <strong style={{ color: T.text }}>{session?.user?.email}</strong>, but this account is not a super administrator.
+          </div>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button onClick={logout} style={{ padding: '10px 18px', borderRadius: '10px', border: `1px solid ${T.border}`, background: 'transparent', color: T.textSec, fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Sign out</button>
+            <a href="/dashboard" style={{ padding: '10px 18px', borderRadius: '10px', background: T.accent, color: '#FFF', fontWeight: 600, fontSize: '13px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Go to app</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const getBaseViewTasks = () => {
-    let d = [...tasks];
-    if (currentView === 'today') d = d.filter(t => t.deadline === todayStr() || t.type === 'daily' || (t.type === 'weekly' && new Date(t.deadline).getDay() === new Date().getDay()));
-    else if (currentView === 'upcoming') d = d.filter(t => t.deadline > todayStr() || t.type === 'weekly' || t.type === 'monthly');
-    else if (currentView === 'category' && activeCategory) {
-      if (activeCategory === 'clients') { const cn = clientsList.map(c => c.name.toLowerCase()); d = d.filter(t => t.category === 'clients' || cn.some(n => (t.subcategory||'').toLowerCase().includes(n))); }
-      else d = d.filter(t => t.category === activeCategory);
-    } else if (currentView === 'client_workspace' && activeClient) {
-      const obj = clientsList.find(c => c.id === activeClient);
-      const cn = obj ? obj.name.toLowerCase() : '';
-      d = d.filter(t => (t.subcategory||'').toLowerCase().includes(cn));
-    }
-    return d;
-  };
+  // ---------- READY (admin shell) ----------
+  const SidebarInner = (
+    <div style={{ width: '260px', height: '100%', background: T.sidebar, borderRight: `1px solid ${T.border}`, padding: '22px 16px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px', paddingLeft: '6px' }}>
+        <Logo size={34} />
+        <div>
+          <div style={{ fontSize: '15px', fontWeight: 800, color: T.text, letterSpacing: '-0.3px' }}>AnuTask</div>
+          <div style={{ fontSize: '10px', color: T.accent, fontWeight: 700, letterSpacing: '0.08em' }}>ADMIN CONSOLE</div>
+        </div>
+      </div>
 
-  const base = getBaseViewTasks();
-  const countAll = base.length;
-  const countToday = base.filter(t => t.deadline === todayStr() || t.type === 'daily').length;
-  const countPending = base.filter(t => t.status === 'pending').length;
-  const countCompleted = base.filter(t => t.status === 'done').length;
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+        {NAV.map((n) => {
+          const active = view === n.id;
+          return (
+            <button key={n.id} onClick={() => { setView(n.id); setMobileNav(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 12px', borderRadius: '9px', border: 'none', background: active ? T.accentSoft : 'transparent', color: active ? '#A5B4FC' : T.textSec, fontSize: '13px', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>
+              <span style={{ fontSize: '15px' }}>{n.icon}</span>{n.label}
+            </button>
+          );
+        })}
+      </div>
 
-  const getFilteredTasksList = () => {
-    let d = [...base];
-    if (dashboardFilter === 'today') d = d.filter(t => t.deadline === todayStr() || t.type === 'daily');
-    else if (dashboardFilter === 'pending') d = d.filter(t => t.status === 'pending');
-    else if (dashboardFilter === 'completed') d = d.filter(t => t.status === 'done');
-    return d;
-  };
+      <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 6px', marginBottom: '8px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '9px', background: T.accentSoft, color: '#A5B4FC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '13px' }}>
+            {(session?.user?.email || 'A')[0].toUpperCase()}
+          </div>
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Super Admin</div>
+            <div style={{ fontSize: '10px', color: T.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.user?.email}</div>
+          </div>
+        </div>
+        <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '9px 12px', background: 'rgba(239,68,68,0.1)', border: 'none', borderRadius: '8px', color: T.red, fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>⏻ Sign out</button>
+      </div>
+    </div>
+  );
 
-  const activeViewTitle = getViewTitle();
-
-  const handleViewChange = (v, c, cl) => {
-    setCurrentView(v); setActiveCategory(c); setActiveClient(cl);
-    setDashboardFilter('today');
-    setMobileSidebarOpen(false);
-  };
+  const titleFor = view === 'dashboard' ? 'Admin Dashboard' : 'Coupons & Offers';
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', background: VISUAL_THEME.bg, overflow: 'hidden', position: 'relative' }}>
-      
-      {/* Mobile overlay */}
-      {isMobile && mobileSidebarOpen && (
-        <div onClick={() => setMobileSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 9998 }} />
-      )}
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', background: T.bg, overflow: 'hidden' }}>
+      {/* Desktop sidebar */}
+      <div style={{ display: 'flex', flexShrink: 0 }} className="admin-desktop-sidebar">{SidebarInner}</div>
 
-      {(!isMobile || mobileSidebarOpen) && (
-        <div style={{ width: '280px', height: '100%', flexShrink: 0, position: isMobile ? 'fixed' : 'relative', zIndex: 9999 }}>
-          <Sidebar
-            currentView={currentView}
-            onViewChange={handleViewChange}
-            activeCategory={activeCategory}
-            activeClient={activeClient}
-            userName={session.user.email}
-            userFullName={userFullName}
-            onLogout={() => authService.signOut().then(() => setSession(null))}
-            customCategories={customCategories}
-            clientsList={clientsList}
-          />
-        </div>
+      {/* Mobile drawer */}
+      {mobileNav && (
+        <>
+          <div onClick={() => setMobileNav(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998 }} />
+          <div style={{ position: 'fixed', top: 0, left: 0, height: '100%', zIndex: 9999 }}>{SidebarInner}</div>
+        </>
       )}
 
       <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        
-        <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
+        <div style={{ height: '64px', borderBottom: `1px solid ${T.border}`, background: T.sidebar, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
-            <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
+            <button onClick={() => setMobileNav(true)} className="admin-mobile-menu" style={{ background: 'transparent', border: 'none', color: T.text, fontSize: '20px', cursor: 'pointer', display: 'none' }}>☰</button>
+            <h1 style={{ fontSize: '17px', fontWeight: 800, color: T.text, margin: 0 }}>{titleFor}</h1>
           </div>
-          {!['settings'].includes(currentView) && (
-            <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
-          )}
+          <div style={{ fontSize: '11px', color: T.textDim, background: T.panel, padding: '6px 12px', borderRadius: '8px', border: `1px solid ${T.border}` }}>🛡️ Super Admin</div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '32px' }}>
-          
-          {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userFullName} viewTitle={activeViewTitle} onImportTasks={handleImportTasks} />
-          )}
-
-          {currentView === 'calendar' && <ViewCalendar tasks={tasks} setInspectedTask={handleSelectInspectedTask} />}
-          {currentView === 'recurring' && <ViewRecurring tasks={tasks} setInspectedTask={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} />}
-          {currentView === 'settings' && <ViewSettings session={session} />}
-          
-          {currentView === 'manage_categories' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0 }}>Categories Hub</h3>
-                <div style={{ display: 'flex', gap: '10px', maxWidth: '500px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div style={{ position: 'relative' }}>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Icon</label>
-                    <button onClick={() => setShowIconPicker(!showIconPicker)} style={{ width: '44px', height: '44px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', fontSize: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{newCatIcon}</button>
-                    {showIconPicker && <IconPicker selectedIcon={newCatIcon} onSelect={icon => setNewCatIcon(icon)} onClose={() => setShowIconPicker(false)} />}
-                  </div>
-                  <div style={{ flex: 1, minWidth: '180px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Name</label>
-                    <input type="text" placeholder={editingCategory ? "Update name" : "New category"} value={newCatName} onChange={e => setNewCatName(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', boxSizing: 'border-box' }} />
-                  </div>
-                  <button onClick={executeCategoryOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, height: '44px' }}>{editingCategory ? 'Update' : '+ Add'}</button>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                  {customCategories.map(c => (
-                    <div key={c.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{c.icon} {c.name}</span>
-                      <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
-                        <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); setNewCatIcon(c.icon); }}>✏️</span>
-                        <span onClick={() => setCustomCategories(prev => prev.filter(item => item.id !== c.id))} style={{ color: '#EF4444' }}>🗑️</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h3 style={{ margin: 0 }}>Client List Hub</h3>
-                <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
-                  <input type="text" placeholder={editingClient ? "Update client" : "New client name"} value={newClientName} onChange={e => setNewClientName(e.target.value)} style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px' }} />
-                  <button onClick={executeClientOperation} style={{ padding: '10px 16px', background: VISUAL_THEME.accent, color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>{editingClient ? 'Update' : '+ Add'}</button>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                  {clientsList.map(cl => (
-                    <div key={cl.id} style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 500 }}>🏢 {cl.name}</span>
-                      <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
-                        <span onClick={() => { setEditingClient(cl.id); setNewClientName(cl.name); }}>✏️</span>
-                        <span onClick={() => setClientsList(prev => prev.filter(item => item.id !== cl.id))} style={{ color: '#EF4444' }}>🗑️</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentView === 'ai_planner' && (
-            <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '32px', textAlign: 'center' }}>
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>🧠</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>AI Schedule Engine</h3>
-              <button onClick={triggerAiPlanCall} disabled={aiLoading} style={{ padding: '12px 24px', background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-                {aiLoading ? 'Calibrating...' : '🤖 Run AI Generation'}
-              </button>
-              {aiPlanOutput && <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, textAlign: 'left', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{aiPlanOutput}</div>}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+          {view === 'dashboard' && <ViewAdmin session={session} adminEmail={session?.user?.email} />}
+          {view === 'coupons' && (
+            <div style={{ background: T.panel, border: `1px solid ${T.border}`, borderRadius: '14px', padding: '4px' }}>
+              {/* CouponManager is self-contained; it prompts for ADMIN_PANEL_SECRET. */}
+              <CouponManager adminEmail={session?.user?.email} dark />
             </div>
           )}
         </div>
       </div>
 
-      {/* EDIT MODAL — Full-screen premium */}
-      {inspectedTask && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', padding: isMobile ? 0 : '24px', boxSizing: 'border-box' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setInspectedTask(null); }}
-        >
-          <div style={{
-            background: '#FFFFFF', borderRadius: isMobile ? '24px 24px 0 0' : '20px',
-            padding: isMobile ? '24px 20px 32px' : '32px 36px',
-            width: '100%', maxWidth: '680px',
-            maxHeight: isMobile ? '95vh' : '90vh', overflowY: 'auto',
-            boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.15)',
-            border: isMobile ? 'none' : `1px solid ${VISUAL_THEME.border}`,
-            boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '20px'
-          }}>
-            <style dangerouslySetInnerHTML={{__html: `div::-webkit-scrollbar { display: none !important; }`}} />
-
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: `1px solid ${VISUAL_THEME.border}` }}>
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0, letterSpacing: '-0.5px' }}>Edit Task</h2>
-                <p style={{ fontSize: '12px', color: VISUAL_THEME.textSec, margin: '4px 0 0', lineHeight: 1.4 }}>Update task details, notes and schedule.</p>
-              </div>
-              <button onClick={() => setInspectedTask(null)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: VISUAL_THEME.textSec, fontSize: '16px', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#E2E8F0'} onMouseLeave={e => e.currentTarget.style.background = '#F1F5F9'}>✕</button>
-            </div>
-
-            {/* Title */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Task Title</label>
-              <input type="text" value={inspectedTask.title || ''} onChange={e => setInspectedTask({ ...inspectedTask, title: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-            </div>
-
-            {/* Rich Text Description */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Description</label>
-              <RichTextEditor
-                value={(inspectedTask.description || '').replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '').trim()}
-                onChange={(html) => setInspectedTask({ ...inspectedTask, description: html })}
-                placeholder="Add details, links, notes... Paste from docs to keep formatting!"
-              />
-            </div>
-
-            {/* Grid: Category + Client */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Category</label>
-                <select value={inspectedTask.category || 'personal'} onChange={e => setInspectedTask({ ...inspectedTask, category: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  {customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Client</label>
-                <select value={inspectedTask.subcategory || 'General'} onChange={e => setInspectedTask({ ...inspectedTask, subcategory: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  <option value="General">General</option>
-                  {clientsList.map(cl => <option key={cl.id} value={cl.name}>🏢 {cl.name}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Grid: Priority + Frequency */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Priority</label>
-                <select value={inspectedTask.priority || 'medium'} onChange={e => setInspectedTask({ ...inspectedTask, priority: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  <option value="low">🔹 Low</option><option value="medium">🔸 Medium</option><option value="high">🔺 High</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Frequency</label>
-                <select value={inspectedTask.type || 'one-time'} onChange={e => setInspectedTask({ ...inspectedTask, type: e.target.value })} style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}>
-                  <option value="one-time">One-Time</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Date & Time */}
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Date & Time</label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input type="date" value={inspectedTask.deadline || todayStr()} onChange={e => setInspectedTask({ ...inspectedTask, deadline: e.target.value })} style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-                <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{ display: 'flex', gap: '12px', borderTop: `1px solid ${VISUAL_THEME.border}`, paddingTop: '20px', marginTop: '8px' }}>
-              <button onClick={() => setInspectedTask(null)} style={{ flex: 1, padding: '14px 0', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', color: VISUAL_THEME.textSec, cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}>Cancel</button>
-              <button onClick={async () => { await taskService.updateTask(inspectedTask.id, { ...inspectedTask, time: convert24to12(editTime) }); await loadTasks(); setInspectedTask(null); }} style={{ flex: 2, padding: '14px 0', borderRadius: '12px', border: 'none', background: VISUAL_THEME.accent, color: '#FFFFFF', cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity = '0.9'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>Save Changes</button>
-              <button onClick={async () => { await handleDeleteTask(inspectedTask.id); setInspectedTask(null); }} style={{ padding: '14px 20px', borderRadius: '12px', background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA', cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'} onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>🗑️</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE MODAL */}
-      {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)' }} onClick={e => { if(e.target === e.currentTarget) setShowCreateModal(false); }}>
-          <div style={{ background: '#FFFFFF', borderRadius: '20px', padding: '28px 20px', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '14px', boxSizing: 'border-box', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Create Task</h2><button onClick={() => setShowCreateModal(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer' }}>✕</button></div>
-            <input type="text" placeholder="Task Title *" value={modalTitle} onChange={e => setModalTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }} />
-            <textarea placeholder="Description..." value={modalDesc} onChange={e => setModalDesc(e.target.value)} style={{ width: '100%', height: '60px', padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', resize: 'none', boxSizing: 'border-box' }} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Category</label><select value={modalCat} onChange={e => { setModalCat(e.target.value); if(e.target.value !== 'clients') setModalSub('none'); }} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}>{customCategories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></div>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Client</label><select value={modalSub} onChange={e => setModalSub(e.target.value)} disabled={modalCat !== 'clients'} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: modalCat === 'clients' ? '#F8FAFC' : '#E2E8F0', width: '100%', boxSizing: 'border-box', cursor: modalCat === 'clients' ? 'pointer' : 'not-allowed' }}><option value="none">General</option>{clientsList.map(cl => <option key={cl.id} value={cl.id}>🏢 {cl.name}</option>)}</select></div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Frequency</label><select value={modalFrequency} onChange={e => setModalFrequency(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}><option value="one-time">One-Time</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
-              <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '4px' }}>Priority</label><select value={modalPriority} onChange={e => setModalPriority(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#F8FAFC', width: '100%', boxSizing: 'border-box' }}><option value="low">🔹 Low</option><option value="medium">🔸 Medium</option><option value="high">🔺 High</option></select></div>
-            </div>
-            <div><label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', marginBottom: '6px', textTransform: 'uppercase' }}>Date & Time</label><div style={{ display: 'flex', gap: '8px' }}><input type="date" value={modalDate} onChange={e => setModalDate(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} /><input type="time" value={modalTime} onChange={e => setModalTime(e.target.value)} style={{ flex: 1, padding: '11px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '13px', background: '#F8FAFC', boxSizing: 'border-box' }} /></div></div>
-            <div style={{ display: 'flex', gap: '10px', borderTop: `1px solid ${VISUAL_THEME.border}`, paddingTop: '16px', marginTop: '8px' }}>
-              <button onClick={() => setShowCreateModal(false)} style={{ flex: 1, padding: '12px 0', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`, background: '#FFF', color: VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleCreateTaskSubmit} style={{ flex: 1, padding: '12px 0', borderRadius: '8px', border: 'none', background: VISUAL_THEME.accent, color: '#FFF', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Save Task</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <style>{`
+        @media (max-width: 1023px) {
+          .admin-desktop-sidebar { display: none !important; }
+          .admin-mobile-menu { display: inline-block !important; }
+        }
+      `}</style>
     </div>
   );
 }
+
+const loginInput = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${T.border}`, background: T.bg, color: T.text, fontSize: '14px', boxSizing: 'border-box' };

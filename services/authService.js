@@ -46,45 +46,121 @@ export const authService = {
     return data;
   },
 
-  // Check if current user is super admin
-  async isAdmin(userId) {
-    const { data, error } = await supabase
-      .from('admin_users')
-      .select('id')
-      .eq('user_id', userId)
-      .single();
-    return !error && !!data;
+  // ============================================
+  // SUPER ADMIN ACCESS CONTROL
+  // ============================================
+  // A user counts as super-admin ONLY if BOTH are true:
+  //   1) their email is in the NEXT_PUBLIC_ADMIN_EMAILS allowlist, AND
+  //   2) they exist in the admin_users table (server-verified).
+  // This guarantees that an ordinary user who somehow visits the admin
+  // URL — even while logged in — can never see the admin panel.
+  // ============================================
+
+  // Emails allowed to even attempt admin login (comma-separated in env)
+  getAdminAllowlist() {
+    const raw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || '';
+    return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
   },
 
-  // Admin: list all users via admin_users_view (or profiles table)
-  async listAllUsers() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
+  isAllowlistedEmail(email) {
+    if (!email) return false;
+    const list = this.getAdminAllowlist();
+    // If no allowlist configured, fall back to DB check only.
+    if (list.length === 0) return true;
+    return list.includes(email.toLowerCase());
+  },
+
+  // Check if current user is super admin (allowlist + DB record)
+  async isAdmin(userId, email) {
+    if (email && !this.isAllowlistedEmail(email)) return false;
+    // Server-side verification via admin API (uses service role + admin_users table)
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify_admin', userId, email }),
+      });
+      const data = await res.json();
+      return res.ok && data.isAdmin === true;
+    } catch {
+      return false;
+    }
+  },
+
+  // Admin: list all users with full subscription + payment detail
+  async adminListUsers(email) {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list_users', email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load users');
+    return data.users || [];
+  },
+
+  // Admin: platform metrics (revenue, MRR, counts)
+  async adminGetMetrics(email) {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'metrics', email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load metrics');
+    return data.metrics || {};
   },
 
   // Admin: block/unblock user
-  async toggleUserBlock(userId, blocked) {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_blocked: blocked })
-      .eq('id', userId);
-    if (error) throw error;
-  },
-
-  // Admin: create user (via edge function or admin API)
-  async adminCreateUser(email, password, name) {
-    // This would typically call a Supabase Edge Function with service_role key
-    const res = await fetch('/api/admin/create-user', {
+  async toggleUserBlock(userId, blocked, email) {
+    const res = await fetch('/api/admin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name })
+      body: JSON.stringify({ action: 'toggle_block', userId, blocked, email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update user');
+    return data;
+  },
+
+  // Admin: change a user's plan / status / expiry / payment method manually
+  async adminUpdateSubscription(userId, updates, email) {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_subscription', userId, updates, email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update subscription');
+    return data;
+  },
+
+  // Admin: apply an offer/discount to a specific user (grants a plan for N days)
+  async adminApplyOffer(userId, offer, email) {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'apply_offer', userId, offer, email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to apply offer');
+    return data;
+  },
+
+  // Admin: create user (via admin API with service_role key)
+  async adminCreateUser(email, password, name, adminEmail) {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_user', email, password, name, adminEmail }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to create user');
     return data;
-  }
+  },
+
+  // Backward-compat alias used by older code
+  async listAllUsers(email) {
+    return this.adminListUsers(email);
+  },
 };
