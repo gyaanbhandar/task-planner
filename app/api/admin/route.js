@@ -30,7 +30,7 @@ function admin() {
 }
 
 function adminAllowlist() {
-  const raw = process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || '';
+  const raw = process.env.ADMIN_EMAILS || '';
   return raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 }
 

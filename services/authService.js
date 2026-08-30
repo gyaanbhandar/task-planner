@@ -59,31 +59,16 @@ export const authService = {
   // ============================================
   // SUPER ADMIN ACCESS CONTROL
   // ============================================
-  // A user counts as super-admin ONLY if BOTH are true:
-  //   1) their email is in the NEXT_PUBLIC_ADMIN_EMAILS allowlist, AND
-  //   2) they exist in the admin_users table (server-verified).
-  // This guarantees that an ordinary user who somehow visits the admin
-  // URL — even while logged in — can never see the admin panel.
+  // A user counts as super-admin ONLY if the SERVER confirms BOTH:
+  //   1) their email is in the private ADMIN_EMAILS allowlist (server-only), AND
+  //   2) they exist in the admin_users table.
+  // The allowlist lives ONLY on the server (never a NEXT_PUBLIC_ var), so the
+  // admin email is never exposed to the browser. All checking happens in
+  // /api/admin, which returns just a boolean — it leaks nothing.
   // ============================================
 
-  // Emails allowed to even attempt admin login (comma-separated in env)
-  getAdminAllowlist() {
-    const raw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || '';
-    return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-  },
-
-  isAllowlistedEmail(email) {
-    if (!email) return false;
-    const list = this.getAdminAllowlist();
-    // If no allowlist configured, fall back to DB check only.
-    if (list.length === 0) return true;
-    return list.includes(email.toLowerCase());
-  },
-
-  // Check if current user is super admin (allowlist + DB record)
+  // Check if current user is super admin (server decides — allowlist + DB record)
   async isAdmin(userId, email) {
-    if (email && !this.isAllowlistedEmail(email)) return false;
-    // Server-side verification via admin API (uses service role + admin_users table)
     try {
       const res = await fetch('/api/admin', {
         method: 'POST',
