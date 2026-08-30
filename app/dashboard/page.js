@@ -62,6 +62,7 @@ const TIME_OPTIONS_15 = (() => {
 export default function AnuTaskOS() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   
   const [currentView, setCurrentView] = useState('today'); 
   const [activeCategory, setActiveCategory] = useState(null);
@@ -135,7 +136,18 @@ export default function AnuTaskOS() {
 
   useEffect(() => {
     authService.getSession().then(s => { setSession(s); setAuthLoading(false); });
-    const sub = authService.onAuthStateChange(s => setSession(s));
+    const sub = authService.onAuthStateChange((s, event) => {
+      setSession(s);
+      // When the user arrives via a password-reset email, Supabase fires
+      // PASSWORD_RECOVERY. Force the reset form even though a session now exists.
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true);
+    });
+    // Also detect the recovery token directly from the URL hash, in case the
+    // event fired before this listener attached.
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      if (hash.includes('type=recovery')) setRecoveryMode(true);
+    }
     return () => sub.unsubscribe();
   }, []);
 
@@ -326,6 +338,9 @@ export default function AnuTaskOS() {
     return () => clearInterval(interval);
   }, [tasks]);
 
+  // Password-reset link: always show the reset form first, even if a session
+  // exists (the recovery link auto-creates one). Cleared once password is set.
+  if (recoveryMode) return <AuthScreen onLogin={s => { setSession(s); setRecoveryMode(false); }} />;
   if (authLoading || (session && tasksLoading)) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA', fontSize: '14px', color: '#64748B' }}>Loading AnuTask...</div>;
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 

@@ -14,8 +14,12 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
   const userMeta = session?.user?.user_metadata || {};
   const [name, setName] = useState(userProfile?.full_name || userMeta.full_name || '');
   const [email] = useState(session?.user?.email || '');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
@@ -90,13 +94,18 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
   };
 
   const handleUpdatePassword = async () => {
-    if (newPassword.length < 6) { setMessage('Password must be at least 6 characters'); return; }
-    if (newPassword !== confirmPassword) { setMessage('Passwords do not match'); return; }
+    if (!currentPassword) { setMessage('Enter your current password'); return; }
+    if (newPassword.length < 6) { setMessage('New password must be at least 6 characters'); return; }
+    if (newPassword !== confirmPassword) { setMessage('New passwords do not match'); return; }
+    if (newPassword === currentPassword) { setMessage('New password must be different from current password'); return; }
     setSaving(true); setMessage('');
     try {
+      // 1) Confirm the current password is correct.
+      await authService.verifyCurrentPassword(currentPassword);
+      // 2) Set the new password.
       await authService.updatePassword(newPassword);
       setMessage('Password updated!');
-      setNewPassword(''); setConfirmPassword('');
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
     } catch (err) { setMessage('Error: ' + err.message); }
     setSaving(false);
   };
@@ -283,6 +292,7 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
 
   const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' };
+  const eyeBtnStyle = { position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', lineHeight: 1 };
   const cardStyle = { background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px', boxSizing: 'border-box' };
 
   const getPrice = (planId) => {
@@ -686,14 +696,27 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
       {activeTab === 'password' && (
         <div style={cardStyle}>
           <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 20px 0' }}>🔒 Change Password</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '420px' }}>
             <div>
-              <label style={labelStyle}>New Password</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Minimum 6 characters" style={inputStyle} />
+              <label style={labelStyle}>Current Password</label>
+              <div style={{ position: 'relative' }}>
+                <input type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Enter current password" style={{ ...inputStyle, paddingRight: '44px' }} />
+                <button type="button" onClick={() => setShowCurrent(v => !v)} style={eyeBtnStyle} aria-label="Toggle password visibility">{showCurrent ? '🙈' : '👁️'}</button>
+              </div>
             </div>
             <div>
-              <label style={labelStyle}>Confirm Password</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Re-enter password" style={inputStyle} />
+              <label style={labelStyle}>New Password</label>
+              <div style={{ position: 'relative' }}>
+                <input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Minimum 6 characters" style={{ ...inputStyle, paddingRight: '44px' }} />
+                <button type="button" onClick={() => setShowNew(v => !v)} style={eyeBtnStyle} aria-label="Toggle password visibility">{showNew ? '🙈' : '👁️'}</button>
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Confirm New Password</label>
+              <div style={{ position: 'relative' }}>
+                <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Re-enter new password" style={{ ...inputStyle, paddingRight: '44px' }} />
+                <button type="button" onClick={() => setShowConfirm(v => !v)} style={eyeBtnStyle} aria-label="Toggle password visibility">{showConfirm ? '🙈' : '👁️'}</button>
+              </div>
             </div>
             <button onClick={handleUpdatePassword} disabled={saving} style={{ padding: '12px', background: '#0F172A', color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1, alignSelf: 'flex-start' }}>
               {saving ? 'Updating...' : 'Update Password'}

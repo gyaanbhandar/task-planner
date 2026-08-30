@@ -40,6 +40,18 @@ export const authService = {
     return data;
   },
 
+  // Verify the user's CURRENT password by attempting a sign-in with it.
+  // Used before allowing an in-app password change, so a stranger on an
+  // unlocked screen can't silently change the password.
+  async verifyCurrentPassword(currentPassword) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const email = sessionData?.session?.user?.email;
+    if (!email) throw new Error('No active session.');
+    const { error } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+    if (error) throw new Error('Current password is incorrect.');
+    return true;
+  },
+
   async updatePassword(newPassword) {
     const { data, error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;

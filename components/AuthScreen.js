@@ -72,10 +72,19 @@ export default function AuthScreen({ onLogin }) {
     setLoading(true);
     try {
       await authService.updatePassword(password);
-      setSuccess('✅ Password badal gaya! Ab naye password se login karo.');
-      // Clean the recovery token out of the URL and drop to login.
+      setSuccess('✅ Password badal gaya! Aapko dashboard pe le ja rahe hain...');
+      // Clean the recovery token out of the URL.
       try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
-      setTimeout(() => { setMode('login'); setPassword(''); setConfirmPassword(''); setSuccess(''); }, 1500);
+      // The recovery link already created a valid session, so log the user
+      // straight in with their new password set.
+      const sess = await authService.getSession();
+      setTimeout(() => {
+        if (sess && typeof onLogin === 'function') {
+          onLogin(sess);
+        } else {
+          setMode('login'); setPassword(''); setConfirmPassword(''); setSuccess('');
+        }
+      }, 1200);
     } catch (err) {
       setError('❌ Password update nahi hua — ' + (err.message || 'link expire ho gaya ho to naya reset bhejo'));
     }
