@@ -1,9 +1,24 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function LandingPage() {
   const [isDark, setIsDark] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Detect if the visitor is already signed in, so we can swap the
+  // "Sign In / Launch App" buttons for a single "Go to Dashboard".
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setIsLoggedIn(!!data.session);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_ev, session) => {
+      setIsLoggedIn(!!session);
+    });
+    return () => { active = false; try { subscription.unsubscribe(); } catch (e) {} };
+  }, []);
 
   useEffect(() => {
     document.body.style.margin = '0';
@@ -138,12 +153,21 @@ export default function LandingPage() {
               )}
             </button>
 
-            <a href="/dashboard" style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, textDecoration: 'none' }} className="desktop-only">Sign In</a>
+            {isLoggedIn ? (
+              <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }} className="desktop-only">
+                <span>Go to Dashboard</span>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </a>
+            ) : (
+              <>
+                <a href="/dashboard" style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, textDecoration: 'none' }} className="desktop-only">Sign In</a>
 
-            <a href="/dashboard?mode=signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }} className="desktop-only">
-              <span>Launch App</span>
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-            </a>
+                <a href="/dashboard?mode=signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }} className="desktop-only">
+                  <span>Launch App</span>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </a>
+              </>
+            )}
 
             {/* Mobile Menu Button */}
             <button onClick={() => setMobileMenuOpen(true)} style={{ display: 'none', width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10, border: `1px solid ${theme.borderColor}`, background: theme.bgSecondary, color: theme.textSecondary, cursor: 'pointer' }} className="mobile-menu-btn">
@@ -162,8 +186,14 @@ export default function LandingPage() {
           {navLinks.map(n => (
             <a key={n.id} href={`#${n.id}`} onClick={(e) => { e.preventDefault(); scrollTo(n.id); }} style={{ display: 'block', padding: '16px 0', fontSize: 18, fontWeight: 600, color: theme.textPrimary, textDecoration: 'none', borderBottom: `1px solid ${theme.borderColor}` }}>{n.label}</a>
           ))}
-          <a href="/dashboard" style={{ display: 'block', padding: '16px 0', fontSize: 18, fontWeight: 600, color: theme.textPrimary, textDecoration: 'none', borderBottom: `1px solid ${theme.borderColor}` }}>Sign In</a>
-          <a href="/dashboard?mode=signup" style={{ display: 'block', marginTop: 24, padding: '16px', borderRadius: 14, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, textDecoration: 'none', textAlign: 'center' }}>Start Free Forever →</a>
+          {isLoggedIn ? (
+            <a href="/dashboard" style={{ display: 'block', marginTop: 24, padding: '16px', borderRadius: 14, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, textDecoration: 'none', textAlign: 'center' }}>Go to Dashboard →</a>
+          ) : (
+            <>
+              <a href="/dashboard" style={{ display: 'block', padding: '16px 0', fontSize: 18, fontWeight: 600, color: theme.textPrimary, textDecoration: 'none', borderBottom: `1px solid ${theme.borderColor}` }}>Sign In</a>
+              <a href="/dashboard?mode=signup" style={{ display: 'block', marginTop: 24, padding: '16px', borderRadius: 14, background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, textDecoration: 'none', textAlign: 'center' }}>Start Free Forever →</a>
+            </>
+          )}
         </div>
       )}
 

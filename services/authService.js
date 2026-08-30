@@ -46,6 +46,16 @@ export const authService = {
     return data;
   },
 
+  // Send a password-reset email. The link brings the user back to /dashboard
+  // where AuthScreen detects the recovery token and shows the "set new password" form.
+  async sendPasswordReset(email) {
+    const redirectTo =
+      (typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || '')) + '/dashboard';
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+    return data;
+  },
+
   // ============================================
   // SUPER ADMIN ACCESS CONTROL
   // ============================================
