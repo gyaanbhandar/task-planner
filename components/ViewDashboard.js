@@ -13,6 +13,12 @@ import { todayStr } from '../utils/dateUtils';
 const PER_PAGE = 4;         // Today's Tasks per page
 const PANEL_PER_PAGE = 4;   // Today panel per page
 
+// Fixed card heights (desktop) so nothing shifts when a filter/page changes.
+const TASKS_CARD_H = 320;   // Today's Tasks card
+const BOTTOM_H     = 230;   // Deadline Overview + Next 7 Days (equal)
+const CALENDAR_H   = 320;   // Calendar card  (≈ TASKS_CARD_H so columns align)
+const PANEL_H      = 230;   // Today panel     (≈ BOTTOM_H)
+
 // ---- date helpers --------------------------------------------
 const parseDate = (d) => { if (!d) return null; const dt = new Date(d + 'T00:00:00'); return isNaN(dt.getTime()) ? null : dt; };
 const diffDays = (deadline) => { const dt = parseDate(deadline); if (!dt) return null; const today = new Date(todayStr() + 'T00:00:00'); return Math.round((dt - today) / 86400000); };
@@ -133,9 +139,13 @@ export default function ViewDashboard({
     );
   };
 
+  // Fixed row height so the card never changes size between filters/pages.
+  const ROW_H = 46;                          // one task row (desktop)
+  const LIST_H = PER_PAGE * ROW_H;           // list area always this tall
+
   // ---------- sub-cards ----------
   const TasksCard = (
-    <div style={{ ...card, padding: '18px' }}>
+    <div style={{ ...card, padding: '18px', height: isMobile ? 'auto' : TASKS_CARD_H, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '4px' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>Today's Tasks</h3>
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -159,21 +169,22 @@ export default function ViewDashboard({
       <p style={{ fontSize: '12px', color: VISUAL_THEME.textSec, margin: '0 0 8px 0' }}>
         {cardCounts.all} task{cardCounts.all !== 1 ? 's' : ''} • {cardCounts.overdue} overdue • {cardCounts.today} due today
       </p>
-      {fullList.length === 0 ? (
-        <div style={{ padding: '28px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: '30px', marginBottom: '8px', opacity: 0.5 }}>🎉</div>
-          <p style={{ fontSize: '14px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 4px 0' }}>Nothing here!</p>
-          <p style={{ fontSize: '12.5px', color: VISUAL_THEME.textSec, margin: 0 }}>No tasks in this filter.</p>
-        </div>
-      ) : (
-        <>
+      {/* Fixed-height list area — the box stays the same whatever the filter shows */}
+      <div style={{ flex: 1, minHeight: isMobile ? 'auto' : LIST_H, display: 'flex', flexDirection: 'column' }}>
+        {fullList.length === 0 ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <div style={{ fontSize: '30px', marginBottom: '8px', opacity: 0.5 }}>🎉</div>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 4px 0' }}>Nothing here!</p>
+            <p style={{ fontSize: '12.5px', color: VISUAL_THEME.textSec, margin: 0 }}>No tasks in this filter.</p>
+          </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {cardList.map((t, idx) => {
               const n = diffDays(t.deadline);
               const bk = n === null ? BUCKETS.no_deadline : n < 0 ? BUCKETS.overdue : n <= 3 ? BUCKETS.due_soon : BUCKETS.upcoming;
               const cat = catOf(t, customCategories);
               return (
-                <div key={t.id} style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: '10px', padding: '10px 4px', borderTop: idx === 0 ? 'none' : `1px solid ${VISUAL_THEME.borderAlt}` }}>
+                <div key={t.id} style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: '10px', height: isMobile ? 'auto' : ROW_H, padding: isMobile ? '10px 4px' : '0 4px', borderTop: idx === 0 ? 'none' : `1px solid ${VISUAL_THEME.borderAlt}` }}>
                   <input type="checkbox" checked={t.status === 'done'} onChange={(e) => { e.stopPropagation(); handleToggleStatus && handleToggleStatus(t.id, t.status); }}
                     style={{ width: '17px', height: '17px', cursor: 'pointer', accentColor: VISUAL_THEME.accent, flexShrink: 0, marginTop: isMobile ? '2px' : 0 }} />
                   <div style={{ flex: 1, minWidth: 0, cursor: onSelectDetail ? 'pointer' : 'default' }} onClick={() => onSelectDetail && onSelectDetail(t)}>
@@ -193,14 +204,16 @@ export default function ViewDashboard({
               );
             })}
           </div>
-          <Pager cur={safePage} total={totalPages} onPrev={() => setPage(p => Math.max(0, p - 1))} onNext={() => setPage(p => Math.min(totalPages - 1, p + 1))} />
-        </>
+        )}
+      </div>
+      {fullList.length > 0 && (
+        <Pager cur={safePage} total={totalPages} onPrev={() => setPage(p => Math.max(0, p - 1))} onNext={() => setPage(p => Math.min(totalPages - 1, p + 1))} />
       )}
     </div>
   );
 
   const DonutCard = (
-    <div style={{ ...card, padding: '18px' }}>
+    <div style={{ ...card, padding: '18px', height: isMobile ? 'auto' : BOTTOM_H, display: 'flex', flexDirection: 'column' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 12px 0' }}>Deadline Overview</h3>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         <Donut segments={donut} total={totalPending} />
@@ -222,19 +235,19 @@ export default function ViewDashboard({
   );
 
   const Next7Card = (
-    <div style={{ ...card, padding: '18px' }}>
+    <div style={{ ...card, padding: '18px', height: isMobile ? 'auto' : BOTTOM_H, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>Next 7 Days</h3>
         {onViewChange && (<button onClick={() => onViewChange('upcoming', null, null)} style={{ background: 'transparent', border: 'none', color: VISUAL_THEME.accent, fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>View all</button>)}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         {next7.map((r, i) => (
-          <div key={r.iso} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderTop: i === 0 ? 'none' : `1px solid ${VISUAL_THEME.borderAlt}` }}>
+          <div key={r.iso} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderTop: i === 0 ? 'none' : `1px solid ${VISUAL_THEME.borderAlt}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: r.count > 0 ? (r.isToday ? '#EF4444' : VISUAL_THEME.accent) : '#E2E8F0', flexShrink: 0 }} />
-              <span style={{ fontSize: '13px', fontWeight: r.isToday ? 700 : 500, color: r.isToday ? VISUAL_THEME.text : VISUAL_THEME.textSec }}>{r.label}</span>
+              <span style={{ fontSize: '12.5px', fontWeight: r.isToday ? 700 : 500, color: r.isToday ? VISUAL_THEME.text : VISUAL_THEME.textSec }}>{r.label}</span>
             </div>
-            <span style={{ fontSize: '12.5px', fontWeight: 600, color: r.count > 0 ? VISUAL_THEME.text : '#94A3B8' }}>{r.count} task{r.count !== 1 ? 's' : ''}</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: r.count > 0 ? VISUAL_THEME.text : '#94A3B8' }}>{r.count} task{r.count !== 1 ? 's' : ''}</span>
           </div>
         ))}
       </div>
@@ -242,7 +255,7 @@ export default function ViewDashboard({
   );
 
   const CalendarCard = (
-    <div style={{ ...card, padding: '16px' }}>
+    <div style={{ ...card, padding: '16px', height: isMobile ? 'auto' : CALENDAR_H, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>Calendar</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -277,7 +290,7 @@ export default function ViewDashboard({
   );
 
   const TodayPanelCard = (
-    <div style={{ ...card, padding: '16px' }}>
+    <div style={{ ...card, padding: '16px', height: isMobile ? 'auto' : PANEL_H, display: 'flex', flexDirection: 'column' }}>
       <h3 style={{ fontSize: '14px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 10px 0' }}>
         Today ({new Date(todayStr() + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})
       </h3>
@@ -285,7 +298,7 @@ export default function ViewDashboard({
         <p style={{ fontSize: '12.5px', color: VISUAL_THEME.textSec, margin: 0 }}>Nothing due today or overdue. 🎉</p>
       ) : (
         <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '11px' }}>
             {todayPanel.map(t => {
               const n = diffDays(t.deadline);
               const dotColor = n < 0 ? '#EF4444' : '#F59E0B';
