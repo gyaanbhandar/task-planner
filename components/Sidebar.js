@@ -44,6 +44,7 @@ export default function Sidebar({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto' }}>
         {[
+          { id: 'overview', label: 'Overview', icon: '📊' },
           { id: 'today', label: 'Today', icon: '☀️' },
           { id: 'upcoming', label: 'Upcoming Tasks', icon: '📅' },
           { id: 'calendar', label: 'Calendar View', icon: '🗓️' },

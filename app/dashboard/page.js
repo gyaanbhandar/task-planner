@@ -14,6 +14,7 @@ import { canCreateClient, canCreateCategory, getUserEntitlements, getUpgradeSugg
 import { formatLimit } from '../../config/plans.config';
 import { useTasks } from '../../hooks/useTasks';
 
+import ViewDashboard from '../../components/ViewDashboard';
 import ViewToday from '../../components/ViewToday';
 import ViewCalendar from '../../components/ViewCalendar';
 import ViewAllTasks from '../../components/ViewAllTasks';
@@ -64,7 +65,7 @@ export default function AnuTaskOS() {
   const [authLoading, setAuthLoading] = useState(true);
   const [recoveryMode, setRecoveryMode] = useState(false);
   
-  const [currentView, setCurrentView] = useState('today'); 
+  const [currentView, setCurrentView] = useState('overview');
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeClient, setActiveClient] = useState(null);
   const [dashboardFilter, setDashboardFilter] = useState('all');
@@ -345,6 +346,7 @@ export default function AnuTaskOS() {
   if (!session) return <AuthScreen onLogin={s => setSession(s)} />;
 
   const getViewTitle = () => {
+    if (currentView === 'overview') return "Overview";
     if (currentView === 'today') return "Today's Tasks";
     if (currentView === 'upcoming') return "Upcoming Tasks";
     if (currentView === 'calendar') return "Calendar View";
@@ -562,7 +564,7 @@ export default function AnuTaskOS() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
             {/* Views that render their own greeting + heading in the content omit the top-bar title to avoid duplicate headings. */}
-            {!['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
+            {!['overview', 'today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
               <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
             )}
           </div>
@@ -603,6 +605,20 @@ export default function AnuTaskOS() {
             );
             return null;
           })()}
+
+          {currentView === 'overview' && (
+            <ViewDashboard
+              tasks={tasks}
+              handleToggleStatus={handleToggleStatus}
+              onSelectDetail={setViewDetailTask}
+              isMobile={isMobile}
+              userName={session.user.email}
+              userFullName={userProfile?.full_name || userFullName}
+              formatIndianDate={formatIndianDate}
+              onNewTask={() => setShowCreateModal(true)}
+              onViewChange={handleViewChange}
+            />
+          )}
 
           {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
             <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} onImportTasks={handleImportTasks} onClearCompleted={handleClearCompleted} sortBy={sortBy} setSortBy={setSortBy} currentView={currentView} activeCategory={activeCategory} customCategories={customCategories} onNewTask={() => setShowCreateModal(true)} />
