@@ -560,6 +560,10 @@ export default function AnuTaskOS() {
 
       <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         
+        {/* Overview renders its own header + New Task button in the content, so on desktop
+            the top bar is hidden entirely (no empty frozen white strip). On mobile it stays
+            for the hamburger menu. */}
+        {!(currentView === 'overview' && !isMobile) && (
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
@@ -568,10 +572,11 @@ export default function AnuTaskOS() {
               <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
             )}
           </div>
-          {!['settings', 'trash'].includes(currentView) && (
+          {!['settings', 'trash', 'overview'].includes(currentView) && (
             <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
           )}
         </div>
+        )}
 
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isMobile ? '16px' : '32px' }}>
           
