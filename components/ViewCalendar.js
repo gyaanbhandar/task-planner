@@ -161,31 +161,29 @@ export default function ViewCalendar({ tasks, setInspectedTask }) {
                   )}
                 </div>
 
-                {/* Task Pills (show max 3) */}
+                {/* Task Pills (show max 3) — restrained neutral/indigo accent, not loud priority colors */}
                 {dayTasks.slice(0, 3).map(dt => (
                   <div
                     key={dt.id}
                     onClick={(e) => { e.stopPropagation(); if (setInspectedTask) setInspectedTask(dt); }}
                     style={{
                       fontSize: '9px',
-                      background: dt.status === 'done' 
-                        ? 'rgba(16, 185, 129, 0.08)' 
-                        : (PRIORITY_CONFIG[dt.priority]?.bg || 'rgba(99,102,241,0.06)'),
-                      color: dt.status === 'done' 
-                        ? '#059669' 
-                        : (PRIORITY_CONFIG[dt.priority]?.color || VISUAL_THEME.accent),
-                      padding: '2px 4px',
-                      borderRadius: '3px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: dt.status === 'done' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(99,102,241,0.06)',
+                      color: dt.status === 'done' ? '#059669' : VISUAL_THEME.accent,
+                      padding: '2px 5px',
+                      borderRadius: '4px',
                       marginTop: '2px',
                       overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
                       cursor: 'pointer',
                       fontWeight: 500,
                       textDecoration: dt.status === 'done' ? 'line-through' : 'none'
                     }}
                   >
-                    {dt.title}
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', flexShrink: 0, background: dt.status === 'done' ? '#10B981' : VISUAL_THEME.accent }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dt.title}</span>
                   </div>
                 ))}
                 {dayTasks.length > 3 && (

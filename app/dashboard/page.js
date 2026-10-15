@@ -67,7 +67,7 @@ export default function AnuTaskOS() {
   const [currentView, setCurrentView] = useState('today'); 
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeClient, setActiveClient] = useState(null);
-  const [dashboardFilter, setDashboardFilter] = useState('today');
+  const [dashboardFilter, setDashboardFilter] = useState('all');
   const [sortBy, setSortBy] = useState('manual');
   
   const [isMobile, setIsMobile] = useState(false);
@@ -502,9 +502,21 @@ export default function AnuTaskOS() {
 
   const getFilteredTasksList = () => {
     let d = [...base];
+    // 'all' and the default show everything for the view; the others narrow it.
     if (dashboardFilter === 'today') d = d.filter(t => t.deadline === todayStr() || t.type === 'daily');
     else if (dashboardFilter === 'pending') d = d.filter(t => t.status === 'pending');
     else if (dashboardFilter === 'completed') d = d.filter(t => t.status === 'done');
+    else if (dashboardFilter === 'this_week') {
+      const now = new Date();
+      const start = todayStr();
+      const weekAhead = new Date(now); weekAhead.setDate(now.getDate() + 7);
+      const end = weekAhead.toISOString().slice(0, 10);
+      d = d.filter(t => t.deadline && t.deadline >= start && t.deadline <= end);
+    } else if (dashboardFilter === 'this_month') {
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      d = d.filter(t => t.deadline && t.deadline.startsWith(ym));
+    }
     return applySorting(d);
   };
 
@@ -512,7 +524,7 @@ export default function AnuTaskOS() {
 
   const handleViewChange = (v, c, cl) => {
     setCurrentView(v); setActiveCategory(c); setActiveClient(cl);
-    setDashboardFilter('today');
+    setDashboardFilter('all');
     setSortBy('manual');
     setMobileSidebarOpen(false);
     if (v === 'trash') loadTrashedTasks();
@@ -549,7 +561,10 @@ export default function AnuTaskOS() {
         <div style={{ height: '70px', borderBottom: `1px solid ${VISUAL_THEME.border}`, background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isMobile && <button onClick={() => setMobileSidebarOpen(true)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>☰</button>}
-            <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
+            {/* Views that render their own greeting + heading in the content omit the top-bar title to avoid duplicate headings. */}
+            {!['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
+              <h1 style={{ fontSize: '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: 0 }}>{activeViewTitle}</h1>
+            )}
           </div>
           {!['settings', 'trash'].includes(currentView) && (
             <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
@@ -590,7 +605,7 @@ export default function AnuTaskOS() {
           })()}
 
           {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} onImportTasks={handleImportTasks} onClearCompleted={handleClearCompleted} sortBy={sortBy} setSortBy={setSortBy} />
+            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} onImportTasks={handleImportTasks} onClearCompleted={handleClearCompleted} sortBy={sortBy} setSortBy={setSortBy} currentView={currentView} activeCategory={activeCategory} customCategories={customCategories} onNewTask={() => setShowCreateModal(true)} />
 
 
           )}

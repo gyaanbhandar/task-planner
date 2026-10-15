@@ -131,7 +131,14 @@ export default function Sidebar({
           <span style={{ fontSize: '14px', color: VISUAL_THEME.textSec }}>⚙️</span>
         </div>
         
-        <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', marginTop: '8px', padding: '8px 12px', background: '#FEF2F2', border: 'none', borderRadius: '8px', color: '#EF4444', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+        <button
+          onClick={onLogout}
+          onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#EF4444'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = VISUAL_THEME.textSec; }}
+          onFocus={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#EF4444'; }}
+          onBlur={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = VISUAL_THEME.textSec; }}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', marginTop: '8px', padding: '8px 12px', background: 'transparent', border: 'none', borderRadius: '8px', color: VISUAL_THEME.textSec, fontSize: '13px', fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s, color 0.15s' }}
+        >
           ⏻ Logout
         </button>
       </div>

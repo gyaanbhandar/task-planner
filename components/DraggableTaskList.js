@@ -18,7 +18,8 @@ import { CSS } from '@dnd-kit/utilities';
 import TaskCard from './TaskCard';
 import { VISUAL_THEME } from '../constants/taskConstants';
 
-function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, isMobile }) {
+function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, isMobile, showCategory }) {
+  const [hovered, setHovered] = useState(false);
   const {
     attributes,
     listeners,
@@ -36,24 +37,37 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, is
     zIndex: isDragging ? 100 : 'auto',
   };
 
+  // Drag handle is revealed on hover/focus (or while dragging) rather than shown permanently.
+  const handleVisible = hovered || isDragging;
+
   return (
-    <div ref={setNodeRef} style={style}>
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: '0', maxWidth: '100%', overflow: 'hidden' }}>
-        {/* Drag Handle - 6 dot grid */}
+    <div
+      ref={setNodeRef}
+      style={style}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+    >
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: '0', maxWidth: '100%', overflow: 'visible' }}>
+        {/* Drag Handle — 6 dot grid, hover/focus-revealed */}
         <div
           {...attributes}
           {...listeners}
+          aria-label="Drag to reorder"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '28px',
+            width: '24px',
             cursor: 'grab',
             flexShrink: 0,
             userSelect: 'none',
             touchAction: 'none',
             borderRadius: '8px 0 0 8px',
-            background: isDragging ? 'rgba(99,102,241,0.06)' : 'transparent'
+            background: isDragging ? 'rgba(99,102,241,0.06)' : 'transparent',
+            opacity: handleVisible ? 1 : 0,
+            transition: 'opacity 0.15s'
           }}
           title="Drag to reorder"
         >
@@ -63,7 +77,7 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, is
             ))}
           </div>
         </div>
-        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'visible' }}>
           <TaskCard
             task={task}
             onToggle={onToggle}
@@ -71,6 +85,7 @@ function SortableTaskItem({ task, onToggle, onSelectDetail, onEdit, onDelete, is
             onEdit={onEdit}
             onDelete={onDelete}
             isMobile={isMobile}
+            showCategory={showCategory}
           />
         </div>
       </div>
@@ -87,7 +102,8 @@ export default function DraggableTaskList({
   onDelete,
   isMobile,
   emptyMessage,
-  dragEnabled = true
+  dragEnabled = true,
+  showCategory = false
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -125,6 +141,7 @@ export default function DraggableTaskList({
             onEdit={onEdit}
             onDelete={onDelete}
             isMobile={isMobile}
+            showCategory={showCategory}
           />
         ))}
       </div>
@@ -144,6 +161,7 @@ export default function DraggableTaskList({
               onEdit={onEdit}
               onDelete={onDelete}
               isMobile={isMobile}
+              showCategory={showCategory}
             />
           ))}
         </div>

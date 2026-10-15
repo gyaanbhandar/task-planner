@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { VISUAL_THEME, PRIORITY_CONFIG } from '../constants/taskConstants';
+import { VISUAL_THEME } from '../constants/taskConstants';
 
 export default function ViewTrash({
   trashedTasks,
@@ -31,12 +31,8 @@ export default function ViewTrash({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* Header Card */}
+      {/* Header — restrained */}
       <div style={{
-        background: 'linear-gradient(135deg, #FEF2F2, #FFF1F2)',
-        borderRadius: '16px',
-        border: '1px solid #FECACA',
-        padding: '24px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: isMobile ? 'flex-start' : 'center',
@@ -44,33 +40,36 @@ export default function ViewTrash({
         gap: '16px'
       }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '28px' }}>🗑️</span>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, color: '#DC2626' }}>Trash Bin</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '22px' }}>🗑️</span>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, color: VISUAL_THEME.text }}>Trash Bin</h2>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: VISUAL_THEME.textSec, background: '#F1F5F9', padding: '2px 10px', borderRadius: '999px' }}>
+              {trashedTasks.length} item{trashedTasks.length !== 1 ? 's' : ''}
+            </span>
           </div>
-          <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
-            {trashedTasks.length} item{trashedTasks.length !== 1 ? 's' : ''} in trash — auto-deleted after 15 days
+          <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>
+            Deleted tasks are automatically removed after 15 days.
           </p>
         </div>
         {trashedTasks.length > 0 && (
           <button
             onClick={() => setShowConfirmEmpty(true)}
             style={{
-              padding: '10px 20px',
-              background: '#DC2626',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: '10px',
+              padding: '9px 18px',
+              background: 'transparent',
+              color: '#DC2626',
+              border: '1px solid #FECACA',
+              borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              transition: 'opacity 0.15s'
+              transition: 'background 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            🗑️ Empty Trash
+            🗑️ Empty trash
           </button>
         )}
       </div>
@@ -123,7 +122,6 @@ export default function ViewTrash({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {trashedTasks.map(t => {
               const daysLeft = getDaysLeft(t.trashed_at);
-              const priorityStyle = PRIORITY_CONFIG[t.priority] || PRIORITY_CONFIG.medium;
               const isDeleting = deletingId === t.id;
 
               return (
@@ -163,18 +161,15 @@ export default function ViewTrash({
                           {t.category}
                         </span>
                       )}
-                      <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', background: priorityStyle.bg, color: priorityStyle.color, textTransform: 'uppercase' }}>
-                        {t.priority || 'medium'}
-                      </span>
                       <span style={{ fontSize: '11px', color: '#94A3B8' }}>
-                        🗑️ {formatTrashDate(t.trashed_at)}
+                        Deleted {formatTrashDate(t.trashed_at)}
                       </span>
                       <span style={{
                         fontSize: '11px',
                         fontWeight: 600,
                         color: daysLeft <= 3 ? '#DC2626' : daysLeft <= 7 ? '#D97706' : '#64748B'
                       }}>
-                        ⏳ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                        {daysLeft} day{daysLeft !== 1 ? 's' : ''} until permanent deletion
                       </span>
                     </div>
                   </div>

@@ -1,134 +1,146 @@
 'use client';
-import React from 'react';
-import { VISUAL_THEME, PRIORITY_CONFIG } from '../constants/taskConstants';
+import React, { useState, useRef, useEffect } from 'react';
+import { VISUAL_THEME } from '../constants/taskConstants';
+import { todayStr } from '../utils/dateUtils';
 
-export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDelete, isMobile }) {
-  const priorityStyle = PRIORITY_CONFIG[task?.priority?.toLowerCase()] || 
-                        PRIORITY_CONFIG[task?.priority] || 
-                        PRIORITY_CONFIG.medium || 
-                        { bg: '#FEF3C7', color: '#D97706' };
-  
-  const getFormattedTime = () => {
-    if (task.time) return task.time;
-    if (task.description) {
-      const match = task.description.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)\b/i);
-      if (match) return match[0];
-    }
-    return '09:00 AM';
-  };
+export default function TaskCard({ task, onToggle, onSelectDetail, onEdit, onDelete, isMobile, showCategory = false }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
-  const displayTime = getFormattedTime();
-  
-  const cleanDesc = (task.description || '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/^(?:Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*|\s*\(Time:\s*\d{1,2}:\d{2}\s*(?:AM|PM)\)\s*)/gi, '')
-    .trim();
+  // Close overflow menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
+  const isDone = task.status === 'done';
+  // Subtle overdue indicator only: a pending task whose deadline is before today.
+  const isOverdue = !isDone && task.deadline && task.deadline < todayStr();
 
   return (
-    <div 
-      style={{ 
-        padding: isMobile ? '12px' : '14px 16px', 
-        background: '#FFFFFF', 
-        borderRadius: '12px', 
-        border: `1px solid ${VISUAL_THEME.border}`, 
-        display: 'flex', 
-        flexDirection: isMobile ? 'column' : 'row',
-        alignItems: isMobile ? 'stretch' : 'center', 
-        justifyContent: 'space-between', 
-        gap: isMobile ? '10px' : '12px',
+    <div
+      style={{
+        padding: isMobile ? '12px' : '13px 16px',
+        background: '#FFFFFF',
+        borderRadius: '12px',
+        border: `1px solid ${VISUAL_THEME.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
         boxSizing: 'border-box',
         marginBottom: '4px',
-        overflow: 'hidden',
+        overflow: 'visible',
         maxWidth: '100%'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: 0 }}>
-        <input 
-          type="checkbox" 
-          checked={task.status === 'done'} 
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+        <input
+          type="checkbox"
+          checked={isDone}
           onChange={(e) => { e.stopPropagation(); onToggle(task.id, task.status); }}
-          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: VISUAL_THEME.accent, marginTop: '2px', flexShrink: 0 }}
+          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: VISUAL_THEME.accent, flexShrink: 0 }}
         />
-        
-        <div style={{ cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onSelectDetail(task)}>
-          <div 
-            style={{ 
-              fontSize: '14px', 
-              fontWeight: 600, 
-              color: task.status === 'done' ? '#94A3B8' : VISUAL_THEME.text, 
-              textDecoration: task.status === 'done' ? 'line-through' : 'none', 
-              whiteSpace: isMobile ? 'normal' : 'nowrap',
-              wordBreak: 'break-word',
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis' 
+
+        {/* Subtle overdue dot — the only permitted metadata indicator */}
+        {isOverdue && (
+          <span
+            title="Overdue"
+            style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#EF4444', flexShrink: 0 }}
+          />
+        )}
+
+        <div
+          style={{ cursor: 'pointer', flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '10px' }}
+          onClick={() => onSelectDetail(task)}
+        >
+          <span
+            style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: isDone ? '#94A3B8' : VISUAL_THEME.text,
+              textDecoration: isDone ? 'line-through' : 'none',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minWidth: 0
             }}
           >
             {task.title}
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap', maxWidth: '100%', overflow: 'hidden' }}>
-            {task.category && (
-              <span style={{ fontSize: '11px', background: '#EEF2FF', color: VISUAL_THEME.accent, padding: '2px 8px', borderRadius: '4px', fontWeight: 500, textTransform: 'capitalize' }}>
-                {task.category}
-              </span>
-            )}
-            {task.subcategory && task.subcategory !== 'General' && (
-              <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
-                🏢 {task.subcategory}
-              </span>
-            )}
-            {task.deadline && (
-              <span style={{ fontSize: '11px', color: '#94A3B8' }}>
-                📅 {task.deadline}
-              </span>
-            )}
-            {cleanDesc && (
-              <span style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', maxWidth: isMobile ? 'calc(100vw - 100px)' : '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }}>
-                • {cleanDesc}
-              </span>
-            )}
-          </div>
-        </div>
+          </span>
 
-      </div>
-
-      <div 
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          gap: '10px', 
-          flexShrink: 0,
-          paddingTop: isMobile ? '8px' : '0',
-          borderTop: isMobile ? '1px solid #F1F5F9' : 'none'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {displayTime && (
-            <span style={{ fontSize: '12px', fontWeight: 700, color: VISUAL_THEME.accent, background: '#EEF2FF', padding: '4px 10px', borderRadius: '6px', border: `1px solid rgba(99,102,241,0.2)` }}>
-              🕒 {displayTime}
+          {/* Category chip — only shown on cross-category views (All Tasks) */}
+          {showCategory && task.category && (
+            <span style={{ fontSize: '11px', background: '#EEF2FF', color: VISUAL_THEME.accent, padding: '2px 8px', borderRadius: '6px', fontWeight: 500, textTransform: 'capitalize', flexShrink: 0 }}>
+              {task.category}
             </span>
           )}
-          <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px', background: priorityStyle.bg, color: priorityStyle.color, textTransform: 'uppercase' }}>
-            {task.priority || 'medium'}
-          </span>
         </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onEdit(task); }} 
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '4px' }}
-            title="Edit Task"
+      {/* Three-dot overflow menu */}
+      <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); setMenuOpen(o => !o); }}
+          aria-label="Task options"
+          aria-haspopup="true"
+          aria-expanded={menuOpen}
+          style={{
+            background: menuOpen ? '#F1F5F9' : 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '18px',
+            lineHeight: 1,
+            color: VISUAL_THEME.textSec,
+            padding: '6px 8px',
+            borderRadius: '8px',
+            transition: 'background 0.15s'
+          }}
+          onMouseEnter={e => { if (!menuOpen) e.currentTarget.style.background = '#F1F5F9'; }}
+          onMouseLeave={e => { if (!menuOpen) e.currentTarget.style.background = 'transparent'; }}
+        >
+          ⋮
+        </button>
+
+        {menuOpen && (
+          <div
+            role="menu"
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: '4px',
+              background: '#FFFFFF',
+              borderRadius: '10px',
+              border: `1px solid ${VISUAL_THEME.border}`,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+              zIndex: 1000,
+              overflow: 'hidden',
+              minWidth: '150px'
+            }}
           >
-            ✏️
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} 
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: 0.6, padding: '4px' }}
-          >
-            🗑️
-          </button>
-        </div>
+            <button
+              role="menuitem"
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(task); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: VISUAL_THEME.text, cursor: 'pointer', textAlign: 'left' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              ✏️ Edit
+            </button>
+            <button
+              role="menuitem"
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(task.id); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '10px 14px', border: 'none', borderTop: `1px solid ${VISUAL_THEME.borderAlt}`, background: 'transparent', fontSize: '13px', fontWeight: 500, color: '#DC2626', cursor: 'pointer', textAlign: 'left' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
