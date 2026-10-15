@@ -617,6 +617,7 @@ export default function AnuTaskOS() {
               formatIndianDate={formatIndianDate}
               onNewTask={() => setShowCreateModal(true)}
               onViewChange={handleViewChange}
+              customCategories={customCategories}
             />
           )}
 
