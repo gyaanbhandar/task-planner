@@ -29,6 +29,21 @@ input, textarea, select, button {
   outline: none;
 }
 
+/* Restore a visible focus ring for keyboard users (mouse clicks stay clean).
+   The rule above removes the default outline; :focus-visible brings an
+   accessible ring back only when navigating via keyboard. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="tab"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #6366F1;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
