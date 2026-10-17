@@ -53,13 +53,13 @@ export default function AuthScreen({ onLogin }) {
   // ---- Forgot password: send reset email ----
   const handleForgot = async () => {
     setError(''); setSuccess('');
-    if (!email) { setError('Apni email daalo jisse account bana hai'); return; }
+    if (!email) { setError('Enter the email address your account is registered with'); return; }
     setLoading(true);
     try {
       await authService.sendPasswordReset(email);
-      setSuccess('✅ Reset link aapki email pe bhej diya. Inbox (aur spam) check karo. Link 1 ghante mein expire ho jaata hai — jaldi kholna.');
+      setSuccess('✅ Password reset link sent to your email. Check your inbox (and spam folder). The link expires in 1 hour, so please open it soon.');
     } catch (err) {
-      setError('❌ Reset email nahi bhej paaye — ' + (err.message || 'dubara try karo'));
+      setError('❌ Could not send the reset email — ' + (err.message || 'please try again'));
     }
     setLoading(false);
   };
@@ -67,12 +67,12 @@ export default function AuthScreen({ onLogin }) {
   // ---- Reset: set the new password ----
   const handleReset = async () => {
     setError(''); setSuccess('');
-    if (!password || password.length < 6) { setError('🔑 Naya password minimum 6 characters ka daalo'); return; }
-    if (password !== confirmPassword) { setError('🔑 Dono password same nahi hain'); return; }
+    if (!password || password.length < 6) { setError('🔑 New password must be at least 6 characters'); return; }
+    if (password !== confirmPassword) { setError('🔑 The two passwords do not match'); return; }
     setLoading(true);
     try {
       await authService.updatePassword(password);
-      setSuccess('✅ Password badal gaya! Aapko dashboard pe le ja rahe hain...');
+      setSuccess('✅ Password updated! Taking you to your dashboard...');
       // Clean the recovery token out of the URL.
       try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
       // The recovery link already created a valid session, so log the user
@@ -86,7 +86,7 @@ export default function AuthScreen({ onLogin }) {
         }
       }, 1200);
     } catch (err) {
-      setError('❌ Password update nahi hua — ' + (err.message || 'link expire ho gaya ho to naya reset bhejo'));
+      setError('❌ Password update failed — ' + (err.message || 'the link may have expired; request a new reset email'));
     }
     setLoading(false);
   };
@@ -98,18 +98,18 @@ export default function AuthScreen({ onLogin }) {
     if (mode === 'reset') return handleReset();
 
     const isLogin = mode === 'login';
-    if (!email || !password) { setError('Email aur password dono daalo'); return; }
-    if (!isLogin && !name.trim()) { setError('Name zaroori hai — apna naam daalo'); return; }
-    if (!isLogin && name.trim().length < 2) { setError('Naam kam se kam 2 characters ka hona chahiye'); return; }
+    if (!email || !password) { setError('Enter both email and password'); return; }
+    if (!isLogin && !name.trim()) { setError('Name is required — please enter your name'); return; }
+    if (!isLogin && name.trim().length < 2) { setError('Name must be at least 2 characters'); return; }
     setLoading(true);
 
     if (isLogin) {
       const { data, error: err } = await authService.signIn(email, password);
       if (err) {
         const errMsg = err.message || '';
-        if (errMsg.includes('Invalid login')) setError('❌ Galat email ya password. Check karke dubara try karo.');
-        else if (errMsg.includes('Email not confirmed')) setError('📧 Pehle email verify karo — inbox mein verification link bheja tha.');
-        else if (errMsg.includes('blocked') || errMsg.includes('banned')) setError('🚫 Aapka account block kiya gaya hai. Support se contact karo.');
+        if (errMsg.includes('Invalid login')) setError('❌ Incorrect email or password. Please check and try again.');
+        else if (errMsg.includes('Email not confirmed')) setError('📧 Please verify your email first — we sent a verification link to your inbox.');
+        else if (errMsg.includes('blocked') || errMsg.includes('banned')) setError('🚫 Your account has been blocked. Please contact support.');
         else setError('❌ Login failed — ' + errMsg);
         setLoading(false);
         return;
@@ -117,28 +117,28 @@ export default function AuthScreen({ onLogin }) {
       onLogin(data.session);
     } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) { setError('📧 Valid email address daalo (e.g. name@gmail.com)'); setLoading(false); return; }
-      if (password.length < 6) { setError('🔑 Password minimum 6 characters ka hona chahiye'); setLoading(false); return; }
+      if (!emailRegex.test(email)) { setError('📧 Enter a valid email address (e.g. name@gmail.com)'); setLoading(false); return; }
+      if (password.length < 6) { setError('🔑 Password must be at least 6 characters'); setLoading(false); return; }
 
       const { data, error: err } = await authService.signUp(email, password, name);
       if (err) {
         const errMsg = (err.message || err.msg || err.error_description || '').toLowerCase();
         if (errMsg.includes('already registered') || errMsg.includes('already been registered') || errMsg.includes('already exists') || errMsg.includes('duplicate')) {
-          setError('📧 Ye email pehle se registered hai. Login tab se login karo ya doosri email use karo.');
+          setError('📧 This email is already registered. Use the Login tab to sign in, or try a different email.');
         } else if (errMsg.includes('password') && (errMsg.includes('weak') || errMsg.includes('short') || errMsg.includes('length'))) {
-          setError('🔑 Password kamzor hai — minimum 6 characters daalo with mix of letters & numbers.');
+          setError('🔑 Password is too weak — use at least 6 characters with a mix of letters and numbers.');
         } else if (errMsg.includes('valid') && errMsg.includes('email')) {
-          setError('📧 Ye valid email address nahi hai. Sahi email daalo (e.g. name@gmail.com).');
+          setError('📧 That is not a valid email address. Enter a correct email (e.g. name@gmail.com).');
         } else if (errMsg.includes('rate') || errMsg.includes('limit') || errMsg.includes('too many')) {
-          setError('⏳ Bahut zyada attempts ho gaye. 1-2 minute baad try karo.');
+          setError('⏳ Too many attempts. Please try again in a minute or two.');
         } else if (errMsg.includes('network') || errMsg.includes('fetch')) {
-          setError('🌐 Internet connection check karo aur dubara try karo.');
+          setError('🌐 Please check your internet connection and try again.');
         } else if (errMsg.includes('database') || errMsg.includes('server')) {
-          setError('⚙️ Server pe issue hai — 1 minute baad dubara try karo.');
+          setError('⚙️ There is a server issue — please try again in a minute.');
         } else if (errMsg.includes('signups not allowed') || errMsg.includes('signup disabled')) {
-          setError('🚫 Abhi new signups band hain. Admin se contact karo.');
+          setError('🚫 New signups are currently closed. Please contact the admin.');
         } else {
-          setError('❌ Signup failed — ' + (err.message || 'Kuch gadbad hui. Dubara try karo.'));
+          setError('❌ Signup failed — ' + (err.message || 'Something went wrong. Please try again.'));
         }
         setLoading(false);
         return;
@@ -155,10 +155,10 @@ export default function AuthScreen({ onLogin }) {
         } catch (e) { console.error('Profile setup error:', e); }
         onLogin(data.session);
       } else if (data?.user && !data?.session) {
-        setSuccess('✅ Account ban gaya! Verification email bheja hai — inbox check karo (spam folder bhi dekho).');
+        setSuccess('✅ Account created! We sent a verification email — check your inbox (and spam folder).');
         setMode('login');
       } else {
-        setSuccess('✅ Account created! Ab Login tab se login karo.');
+        setSuccess('✅ Account created! Now sign in from the Login tab.');
         setMode('login');
       }
     }
@@ -203,8 +203,8 @@ export default function AuthScreen({ onLogin }) {
           </div>
           <h1 style={{ margin: 0, fontSize: '24px', color: '#312E81', fontWeight: 700, letterSpacing: '-0.5px' }}>{title}</h1>
           <p style={{ margin: '6px 0 0', fontSize: '13px', color: VISUAL_THEME.textSec, fontWeight: 400 }}>
-            {mode === 'reset' ? 'Naya password choose karo' :
-             mode === 'forgot' ? 'Email daalo, reset link bhej denge' :
+            {mode === 'reset' ? 'Choose a new password' :
+             mode === 'forgot' ? 'Enter your email and we will send a reset link' :
              'Smart SaaS OS by Anukant'}
           </p>
         </div>

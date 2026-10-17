@@ -74,7 +74,7 @@ export default function ImportTasks({ onImport, onClose, isMobile }) {
               📤 Import Tasks
             </h2>
             <p style={{ margin: '4px 0 0', fontSize: '12px', color: VISUAL_THEME.textSec }}>
-              CSV ya JSON file upload karo — same format as export
+              Upload a CSV or JSON file — same format as export
             </p>
           </div>
           <button onClick={onClose} style={{
@@ -97,7 +97,7 @@ export default function ImportTasks({ onImport, onClose, isMobile }) {
                 {importResult.count} Tasks Successfully Imported!
               </div>
               <p style={{ fontSize: '12px', color: '#10B981', margin: '6px 0 0' }}>
-                Sab tasks aapke dashboard mein add ho gaye hain
+                All tasks have been added to your dashboard
               </p>
               <button onClick={onClose} style={{
                 marginTop: '12px', padding: '10px 24px', background: '#059669',
@@ -139,7 +139,7 @@ export default function ImportTasks({ onImport, onClose, isMobile }) {
             >
               <div style={{ fontSize: '40px', marginBottom: '12px' }}>📁</div>
               <div style={{ fontSize: '14px', fontWeight: 600, color: VISUAL_THEME.text, marginBottom: '6px' }}>
-                File drag & drop karo ya click karo
+                Drag & drop a file or click to browse
               </div>
               <div style={{ fontSize: '12px', color: VISUAL_THEME.textSec }}>
                 Supported: .csv, .json
@@ -166,7 +166,7 @@ export default function ImportTasks({ onImport, onClose, isMobile }) {
               <div style={{ fontSize: '12px', color: VISUAL_THEME.textSec, lineHeight: '1.6' }}>
                 <strong>CSV Headers:</strong> Title, Description, Category, Subcategory, Priority, Status, Type, Deadline, Time<br />
                 <strong>JSON:</strong> Array of objects with same fields<br />
-                <strong>Tip:</strong> Pehle Export karo, usi file mein apne tasks add karo, phir Import karo!
+                <strong>Tip:</strong> Export first, add your tasks to that same file, then import it!
               </div>
             </div>
           )}

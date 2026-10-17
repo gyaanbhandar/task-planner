@@ -155,7 +155,7 @@ export default function FormPanel({ form: initialForm, editTask, onSubmit, onClo
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Task Title *</label>
             <input 
               type="text" 
-              placeholder="e.g., Ansh se baat karni hai" 
+              placeholder="e.g., Call Ansh about the proposal"
               value={localForm.title} 
               onChange={e => setLocalForm({ ...localForm, title: e.target.value })} 
               style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${VISUAL_THEME.border}`, fontSize: '14px', background: '#F8FAFC', boxSizing: 'border-box' }}

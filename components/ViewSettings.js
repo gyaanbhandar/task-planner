@@ -249,7 +249,7 @@ export default function ViewSettings({ session, userProfile, onProfileUpdate }) 
         if (perm === 'granted') {
           setNotifEnabled(true); setNotifStatus('Active ✅');
           localStorage.setItem('notifications_enabled', 'true');
-          new Notification('AnuTask', { body: 'Notifications active ho gaye hain!' });
+          new Notification('AnuTask', { body: 'Notifications are now active!' });
         } else {
           setNotifEnabled(false); setNotifStatus('Blocked ❌');
           localStorage.setItem('notifications_enabled', 'false');
