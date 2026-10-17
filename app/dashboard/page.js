@@ -13,6 +13,8 @@ import { subscriptionService, PLAN_LIMITS } from '../../services/subscriptionSer
 import { canCreateClient, canCreateCategory, getUserEntitlements, getUpgradeSuggestion } from '../../services/entitlements';
 import { formatLimit } from '../../config/plans.config';
 import { useTasks } from '../../hooks/useTasks';
+import { useVoiceCommand } from '../../hooks/useVoiceCommand';
+import VoiceCommandButton from '../../components/VoiceCommandButton';
 
 import ViewDashboard from '../../components/ViewDashboard';
 import ViewToday from '../../components/ViewToday';
@@ -124,6 +126,17 @@ export default function AnuTaskOS() {
     handleToggleStatus, handleDeleteTask, handleRestoreTask, handlePermanentDelete,
     handleEmptyTrash, handleAutoCleanTrash, handleAutoCleanCompleted, handleClearCompleted, handleReorderTasks, handleImportTasks
   } = useTasks(session, showToast);
+
+  // Voice command: speak to create / update / delete / reorder tasks (Hinglish).
+  // Shares the AI Planner monthly quota via /api/voice-command.
+  const voice = useVoiceCommand({
+    session,
+    tasks,
+    categories: customCategories,
+    clients: clientsList,
+    reload: loadTasks,
+    showToast,
+  });
 
   // Get user's actual full name
   const userFullName = session?.user?.user_metadata?.full_name || '';
@@ -1006,6 +1019,9 @@ export default function AnuTaskOS() {
           </div>
         </div>
       )}
+
+      {/* Voice Command — floating mic (all views) */}
+      <VoiceCommandButton voice={voice} tasks={tasks} isMobile={isMobile} />
 
       {/* Toast Notification */}
       {toastVisible && (
