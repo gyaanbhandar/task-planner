@@ -228,7 +228,7 @@ export default function ViewCalendar({ tasks, setInspectedTask }) {
 
           {selectedDayTasks.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px', color: VISUAL_THEME.textSec, fontSize: '13px' }}>
-              🗓️ Is din koi task nahi hai
+              🗓️ No tasks on this day
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
