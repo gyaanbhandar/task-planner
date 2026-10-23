@@ -71,7 +71,7 @@ export default function AnuTaskOS() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeClient, setActiveClient] = useState(null);
   const [dashboardFilter, setDashboardFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('manual');
+  const [sortBy, setSortBy] = useState('time');
   
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -540,7 +540,9 @@ export default function AnuTaskOS() {
   const handleViewChange = (v, c, cl) => {
     setCurrentView(v); setActiveCategory(c); setActiveClient(cl);
     setDashboardFilter('all');
-    setSortBy('manual');
+    // Default task lists to Time (Earliest) sort. Recurring view treats any
+    // non-'manual' value as an active sort, so it stays well-behaved too.
+    setSortBy(v === 'recurring' ? 'manual' : 'time');
     setMobileSidebarOpen(false);
     if (v === 'trash') loadTrashedTasks();
   };

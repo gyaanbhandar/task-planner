@@ -111,7 +111,6 @@ export default function ViewToday({
           backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', minWidth: '130px', boxSizing: 'border-box'
         }}
       >
-        <option value="manual">Manual order</option>
         <option value="date_asc">Date (Nearest)</option>
         <option value="date_desc">Date (Farthest)</option>
         <option value="priority">Priority (High→Low)</option>
@@ -364,7 +363,7 @@ export default function ViewToday({
               onEdit={onEdit}
               onDelete={handleDeleteTask}
               isMobile={isMobile}
-              dragEnabled={sortBy === 'manual' && !isAllTasks && statusTab === 'pending' && totalItems <= pageSize}
+              dragEnabled={false}
               showCategory={isAllTasks}
             />
             {pagination}
