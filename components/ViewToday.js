@@ -38,6 +38,11 @@ export default function ViewToday({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  // Pending vs Completed sub-tab. Defaults to pending so completed tasks don't clutter the list.
+  const [statusTab, setStatusTab] = useState('pending');
+  // Pagination: how many tasks per page, and which page we're on.
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const moreRef = useRef(null);
 
   const isAllTasks = currentView === 'all_tasks';
@@ -65,11 +70,31 @@ export default function ViewToday({
   const heading = viewTitle || 'Tasks';
 
   // Apply the All-Tasks category dropdown filter on top of the list the dashboard provides.
-  const displayedTasks = (isAllTasks && categoryFilter !== 'all')
+  const categoryFiltered = (isAllTasks && categoryFilter !== 'all')
     ? viewableTasksList.filter(t => t.category === categoryFilter)
     : viewableTasksList;
 
-  // Count line
+  // Split into pending vs completed for the status tab.
+  const pendingTasks = categoryFiltered.filter(t => t.status !== 'done');
+  const completedTasks = categoryFiltered.filter(t => t.status === 'done');
+
+  // The list shown is driven by the active status tab.
+  const statusFilteredTasks = statusTab === 'completed' ? completedTasks : pendingTasks;
+
+  // Reset to page 1 whenever the effective filter/view/tab/pageSize changes,
+  // so the user never lands on an out-of-range page.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusTab, categoryFilter, dashboardFilter, currentView, activeCategory, pageSize, statusFilteredTasks.length]);
+
+  // Pagination math.
+  const totalItems = statusFilteredTasks.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * pageSize;
+  const displayedTasks = statusFilteredTasks.slice(startIdx, startIdx + pageSize);
+
+  // Count line reflects the active tab.
   const doneInList = displayedTasks.filter(t => t.status === 'done').length;
 
   const sortSelect = (
@@ -146,6 +171,108 @@ export default function ViewToday({
     </div>
   );
 
+  // Pending / Completed status tabs — shown on every list view so completed
+  // tasks live in their own tab instead of cluttering the pending list.
+  const statusTabs = (
+    <div style={{ display: 'inline-flex', background: '#F1F5F9', borderRadius: '10px', padding: '3px', gap: '3px' }}>
+      {[
+        { id: 'pending', label: 'Pending', count: pendingTasks.length },
+        { id: 'completed', label: 'Completed', count: completedTasks.length }
+      ].map(tab => {
+        const active = statusTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => setStatusTab(tab.id)}
+            style={{
+              padding: '7px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
+              background: active ? '#FFFFFF' : 'transparent',
+              color: active ? VISUAL_THEME.text : VISUAL_THEME.textSec,
+              boxShadow: active ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s'
+            }}
+          >
+            {tab.label}
+            <span style={{
+              fontSize: '11px', fontWeight: 700, minWidth: '18px', textAlign: 'center',
+              padding: '1px 6px', borderRadius: '999px',
+              background: active ? (tab.id === 'completed' ? '#ECFDF5' : '#EEF2FF') : '#E2E8F0',
+              color: active ? (tab.id === 'completed' ? '#059669' : VISUAL_THEME.accent) : VISUAL_THEME.textSec
+            }}>{tab.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  // Numbered page controls — only appear once there are more tasks than one page holds.
+  const buildPageNumbers = () => {
+    const pages = [];
+    const windowSize = 5; // how many numbered buttons to show at once
+    let start = Math.max(1, safePage - Math.floor(windowSize / 2));
+    let end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, Math.min(start, end - windowSize + 1));
+    for (let p = start; p <= end; p++) pages.push(p);
+    return { pages, showFirst: start > 1, showLast: end < totalPages };
+  };
+
+  const pagination = totalItems > pageSize ? (() => {
+    const { pages, showFirst, showLast } = buildPageNumbers();
+    const btn = (content, onClick, opts = {}) => (
+      <button
+        key={opts.key || content}
+        onClick={onClick}
+        disabled={opts.disabled}
+        aria-current={opts.active ? 'page' : undefined}
+        style={{
+          minWidth: '34px', height: '34px', padding: '0 10px', borderRadius: '8px',
+          border: `1px solid ${opts.active ? VISUAL_THEME.accent : VISUAL_THEME.border}`,
+          background: opts.active ? VISUAL_THEME.accent : '#FFFFFF',
+          color: opts.active ? '#FFFFFF' : (opts.disabled ? '#CBD5E1' : VISUAL_THEME.text),
+          fontSize: '13px', fontWeight: 600,
+          cursor: opts.disabled ? 'not-allowed' : 'pointer',
+          transition: 'all 0.15s'
+        }}
+      >{content}</button>
+    );
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '4px 2px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, color: VISUAL_THEME.textSec, whiteSpace: 'nowrap' }}>Show:</span>
+          <select
+            value={pageSize}
+            onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+            style={{
+              padding: '7px 28px 7px 10px', borderRadius: '8px', border: `1px solid ${VISUAL_THEME.border}`,
+              fontSize: '12px', fontWeight: 500, color: VISUAL_THEME.text, background: '#FFFFFF', cursor: 'pointer', appearance: 'none',
+              backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'10\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748B\' stroke-width=\'2.5\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")',
+              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', boxSizing: 'border-box'
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span style={{ fontSize: '12px', color: VISUAL_THEME.textSec, whiteSpace: 'nowrap', marginLeft: '4px' }}>
+            {startIdx + 1}–{Math.min(startIdx + pageSize, totalItems)} of {totalItems}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          {btn('‹', () => setCurrentPage(p => Math.max(1, p - 1)), { key: 'prev', disabled: safePage === 1 })}
+          {showFirst && btn('1', () => setCurrentPage(1), { key: 'first' })}
+          {showFirst && <span key="e1" style={{ color: VISUAL_THEME.textSec, padding: '0 2px' }}>…</span>}
+          {pages.map(p => btn(String(p), () => setCurrentPage(p), { key: `p${p}`, active: p === safePage }))}
+          {showLast && <span key="e2" style={{ color: VISUAL_THEME.textSec, padding: '0 2px' }}>…</span>}
+          {showLast && btn(String(totalPages), () => setCurrentPage(totalPages), { key: 'last' })}
+          {btn('›', () => setCurrentPage(p => Math.min(totalPages, p + 1)), { key: 'next', disabled: safePage === totalPages })}
+        </div>
+      </div>
+    );
+  })() : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', boxSizing: 'border-box' }}>
 
@@ -157,7 +284,7 @@ export default function ViewToday({
           </h1>
           <h2 style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: VISUAL_THEME.text, margin: '8px 0 2px 0' }}>{heading}</h2>
           <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0 }}>
-            {formatIndianDate()} • {displayedTasks.length} task{displayedTasks.length !== 1 ? 's' : ''} • {doneInList} completed
+            {formatIndianDate()} • {statusFilteredTasks.length} {statusTab === 'completed' ? 'completed' : 'pending'} • {completedTasks.length} completed in total
           </p>
         </div>
 
@@ -167,7 +294,8 @@ export default function ViewToday({
         </div>
       </div>
 
-      {/* All Tasks: quick-filter tabs + category dropdown */}
+      {/* All Tasks: date-range quick filters + category dropdown.
+          (Pending/Completed is handled by the shared status tabs below for every view.) */}
       {isAllTasks && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -175,9 +303,7 @@ export default function ViewToday({
               { id: 'all', label: 'All' },
               { id: 'today', label: 'Today' },
               { id: 'this_week', label: 'This Week' },
-              { id: 'this_month', label: 'This Month' },
-              { id: 'pending', label: 'Pending' },
-              { id: 'completed', label: 'Completed' }
+              { id: 'this_month', label: 'This Month' }
             ].map(tab => {
               const active = dashboardFilter === tab.id;
               return (
@@ -219,34 +345,32 @@ export default function ViewToday({
         </div>
       )}
 
-      {/* Task list card */}
-      <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '16px', boxSizing: 'border-box' }}>
-        {displayedTasks.length === 0 ? (
-          <EmptyState isUpcoming={isUpcoming} heading={heading} onNewTask={onNewTask} />
-        ) : (
-          <DraggableTaskList
-            tasks={displayedTasks}
-            onReorder={handleReorderTasks}
-            onToggle={handleToggleStatus}
-            onSelectDetail={setInspectedTask}
-            onEdit={onEdit}
-            onDelete={handleDeleteTask}
-            isMobile={isMobile}
-            dragEnabled={sortBy === 'manual' && !isAllTasks}
-            showCategory={isAllTasks}
-          />
-        )}
+      {/* Shared Pending / Completed status tabs for all list views */}
+      <div>
+        {statusTabs}
       </div>
 
-      {/* All Tasks footer summary */}
-      {isAllTasks && displayedTasks.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: VISUAL_THEME.textSec, padding: '0 4px' }}>
-          <span>{countAll} task{countAll !== 1 ? 's' : ''} in total • {countCompleted} completed</span>
-          {countCompleted > 0 && onClearCompleted && (
-            <button onClick={onClearCompleted} style={{ background: 'transparent', border: 'none', color: VISUAL_THEME.accent, fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Clear completed</button>
-          )}
-        </div>
-      )}
+      {/* Task list card */}
+      <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '16px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {displayedTasks.length === 0 ? (
+          <EmptyState isUpcoming={isUpcoming} heading={heading} onNewTask={onNewTask} statusTab={statusTab} />
+        ) : (
+          <>
+            <DraggableTaskList
+              tasks={displayedTasks}
+              onReorder={handleReorderTasks}
+              onToggle={handleToggleStatus}
+              onSelectDetail={setInspectedTask}
+              onEdit={onEdit}
+              onDelete={handleDeleteTask}
+              isMobile={isMobile}
+              dragEnabled={sortBy === 'manual' && !isAllTasks && statusTab === 'pending' && totalItems <= pageSize}
+              showCategory={isAllTasks}
+            />
+            {pagination}
+          </>
+        )}
+      </div>
 
       {showImportModal && (
         <ImportTasks
@@ -261,17 +385,28 @@ export default function ViewToday({
 
 const moreItemStyle = { display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: 'transparent', fontSize: '13px', fontWeight: 500, color: '#0F172A', cursor: 'pointer', textAlign: 'left' };
 
-function EmptyState({ isUpcoming, heading, onNewTask }) {
+function EmptyState({ isUpcoming, heading, onNewTask, statusTab }) {
+  if (statusTab === 'completed') {
+    return (
+      <div style={{ padding: '48px 20px', textAlign: 'center' }}>
+        <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.5 }}>✅</div>
+        <p style={{ fontSize: '16px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 6px 0' }}>No completed tasks yet</p>
+        <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: 0, maxWidth: '360px', marginLeft: 'auto', marginRight: 'auto' }}>
+          Tick a task off and it will move here automatically.
+        </p>
+      </div>
+    );
+  }
   return (
     <div style={{ padding: '48px 20px', textAlign: 'center' }}>
       <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.5 }}>{isUpcoming ? '🗓️' : '📝'}</div>
       <p style={{ fontSize: '16px', fontWeight: 700, color: VISUAL_THEME.text, margin: '0 0 6px 0' }}>
-        {isUpcoming ? 'No upcoming tasks yet' : `No tasks in ${heading} yet`}
+        {isUpcoming ? 'No upcoming tasks yet' : `No pending tasks in ${heading}`}
       </p>
       <p style={{ fontSize: '13px', color: VISUAL_THEME.textSec, margin: '0 0 18px 0', maxWidth: '360px', marginLeft: 'auto', marginRight: 'auto' }}>
         {isUpcoming
           ? 'Tasks with future dates will appear here. Create a task and set a date to see it in this list.'
-          : 'Create a task to get started.'}
+          : 'All caught up — create a task or check the Completed tab.'}
       </p>
       {onNewTask && (
         <button onClick={onNewTask} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
