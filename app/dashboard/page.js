@@ -227,6 +227,27 @@ export default function AnuTaskOS() {
             } catch(e) {}
           }, 2000);
         }
+
+        // Load user's categories from DB (persisted, per-user).
+        // First login: the table is empty, so seed it with the default set
+        // once — after that, the user's own add/edit/delete survives refresh.
+        const dbCats = await subscriptionService.getUserCategories(session.user.id);
+        if (dbCats && dbCats.length > 0) {
+          setCustomCategories(dbCats.map(c => ({
+            id: c.cat_id,
+            name: c.name,
+            icon: c.icon || '📂',
+            color: c.color || '#6366F1',
+            bg: c.bg || 'rgba(99,102,241,0.08)',
+          })));
+        } else {
+          // Seed defaults into DB so the user starts with the standard
+          // categories but can then customize or delete them permanently.
+          try {
+            await subscriptionService.saveUserCategories(session.user.id, CATEGORIES);
+          } catch (e) { console.error('Seed categories failed:', e); }
+          setCustomCategories(CATEGORIES);
+        }
       } catch (e) {
         console.error('Profile setup error:', e);
       }
@@ -395,10 +416,24 @@ export default function AnuTaskOS() {
     } catch (err) { alert('Error: ' + (err.message || err)); }
   };
 
-  const executeCategoryOperation = () => {
+  // Persist the full category list to the DB (delete-all + re-insert).
+  // Keeps the DB as the source of truth so refresh/delete behave correctly.
+  const persistCategories = async (list) => {
+    if (!session?.user?.id) return;
+    try {
+      await subscriptionService.saveUserCategories(session.user.id, list);
+    } catch (e) {
+      console.error('Save categories error:', e);
+      alert('Error saving category: ' + (e.message || 'please try again'));
+    }
+  };
+
+  const executeCategoryOperation = async () => {
     if (!newCatName.trim()) return;
+    let nextList;
     if (editingCategory) {
-      setCustomCategories(prev => prev.map(c => c.id === editingCategory ? { ...c, name: newCatName, icon: newCatIcon } : c));
+      nextList = customCategories.map(c => c.id === editingCategory ? { ...c, name: newCatName, icon: newCatIcon } : c);
+      setCustomCategories(nextList);
       setEditingCategory(null);
     } else {
       // Enforce plan category limit before adding a new category
@@ -412,9 +447,18 @@ export default function AnuTaskOS() {
         setNewCatName(''); setNewCatIcon('📂');
         return;
       }
-      setCustomCategories(prev => [...prev, { id: 'cat_' + Date.now(), name: newCatName, icon: newCatIcon, color: '#6366F1', bg: 'rgba(99,102,241,0.04)' }]);
+      nextList = [...customCategories, { id: 'cat_' + Date.now(), name: newCatName, icon: newCatIcon, color: '#6366F1', bg: 'rgba(99,102,241,0.08)' }];
+      setCustomCategories(nextList);
     }
     setNewCatName(''); setNewCatIcon('📂');
+    await persistCategories(nextList);
+  };
+
+  // Delete a category and persist the new list so it stays deleted on refresh.
+  const deleteCategory = async (catId) => {
+    const nextList = customCategories.filter(item => item.id !== catId);
+    setCustomCategories(nextList);
+    await persistCategories(nextList);
   };
 
   const executeClientOperation = async () => {
@@ -674,7 +718,7 @@ export default function AnuTaskOS() {
                       <span style={{ fontSize: '13px', fontWeight: 500 }}>{c.icon} {c.name}</span>
                       <div style={{ display: 'flex', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
                         <span onClick={() => { setEditingCategory(c.id); setNewCatName(c.name); setNewCatIcon(c.icon); }}>✏️</span>
-                        <span onClick={() => setCustomCategories(prev => prev.filter(item => item.id !== c.id))} style={{ color: '#EF4444' }}>🗑️</span>
+                        <span onClick={() => deleteCategory(c.id)} style={{ color: '#EF4444' }}>🗑️</span>
                       </div>
                     </div>
                   ))}
