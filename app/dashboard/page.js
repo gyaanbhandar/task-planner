@@ -124,7 +124,7 @@ export default function AnuTaskOS() {
   const {
     tasks, trashedTasks, loading: tasksLoading, loadTasks, loadTrashedTasks,
     handleToggleStatus, handleDeleteTask, handleRestoreTask, handlePermanentDelete,
-    handleEmptyTrash, handleAutoCleanTrash, handleAutoCleanCompleted, handleClearCompleted, handleReorderTasks, handleImportTasks
+    handleEmptyTrash, handleAutoCleanTrash, handleAutoCleanCompleted, handleClearCompleted, handleReorderTasks, handleImportTasks: rawImportTasks
   } = useTasks(session, showToast);
 
   // Voice command: speak to create / update / delete / reorder tasks (Hinglish).
@@ -412,7 +412,7 @@ export default function AnuTaskOS() {
     try {
       await taskService.createTask({ title: modalTitle, description: modalDesc.trim(), time: formatted12hTime, category: modalCat, subcategory: subValue, priority: modalPriority, type: modalFrequency, deadline: modalDate }, session.user.id);
       await loadTasks();
-      setShowCreateModal(false); setModalTitle(''); setModalDesc(''); setModalSub('none');
+      setShowCreateModal(false); setModalTitle(''); setModalDesc(''); setModalCat('personal'); setModalSub('none');
     } catch (err) { alert('Error: ' + (err.message || err)); }
   };
 
@@ -426,6 +426,42 @@ export default function AnuTaskOS() {
       console.error('Save categories error:', e);
       alert('Error saving category: ' + (e.message || 'please try again'));
     }
+  };
+
+  // Wrapped import handler: auto-creates missing categories from imported tasks
+  const handleImportTasks = async (parsedTasks) => {
+    // Collect unique categories from import that don't exist yet
+    const existingCatIds = new Set(customCategories.map(c => c.id));
+    const newCats = [];
+    const seenNewCats = new Set();
+
+    parsedTasks.forEach(t => {
+      const catId = t.category || 'personal';
+      const catName = t.categoryName || '';
+      if (!existingCatIds.has(catId) && !seenNewCats.has(catId) && catId !== 'personal') {
+        // This is a new category — auto-create it
+        const displayName = catName || catId.replace(/^cat_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        newCats.push({
+          id: catId,
+          name: displayName,
+          icon: '📂',
+          color: '#6366F1',
+          bg: 'rgba(99,102,241,0.08)'
+        });
+        seenNewCats.add(catId);
+      }
+    });
+
+    // If there are new categories, add them and persist
+    if (newCats.length > 0) {
+      const updatedCats = [...customCategories, ...newCats];
+      setCustomCategories(updatedCats);
+      await persistCategories(updatedCats);
+    }
+
+    // Now import tasks (upsert logic handled by taskService)
+    const result = await rawImportTasks(parsedTasks);
+    return result;
   };
 
   const executeCategoryOperation = async () => {
@@ -632,7 +668,7 @@ export default function AnuTaskOS() {
             )}
           </div>
           {!['settings', 'trash', 'overview'].includes(currentView) && (
-            <button onClick={() => setShowCreateModal(true)} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
+            <button onClick={() => { if (currentView === 'category' && activeCategory) setModalCat(activeCategory); setShowCreateModal(true); }} style={{ background: VISUAL_THEME.accent, color: '#FFFFFF', border: 'none', padding: '10px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>+ New Task</button>
           )}
         </div>
         )}
@@ -686,7 +722,7 @@ export default function AnuTaskOS() {
           )}
 
           {['today', 'upcoming', 'category', 'client_workspace', 'all_tasks'].includes(currentView) && (
-            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} onImportTasks={handleImportTasks} onClearCompleted={handleClearCompleted} sortBy={sortBy} setSortBy={setSortBy} currentView={currentView} activeCategory={activeCategory} customCategories={customCategories} onNewTask={() => setShowCreateModal(true)} />
+            <ViewToday tasks={tasks} countAll={countAll} countToday={countToday} countPending={countPending} countCompleted={countCompleted} dashboardFilter={dashboardFilter} setDashboardFilter={setDashboardFilter} viewableTasksList={getFilteredTasksList()} handleToggleStatus={handleToggleStatus} setInspectedTask={setViewDetailTask} onEdit={handleSelectInspectedTask} handleDeleteTask={handleDeleteTask} handleReorderTasks={handleReorderTasks} isMobile={isMobile} formatIndianDate={formatIndianDate} userName={session.user.email} userFullName={userProfile?.full_name || userFullName} viewTitle={activeViewTitle} userProfile={userProfile} onImportTasks={handleImportTasks} onClearCompleted={handleClearCompleted} sortBy={sortBy} setSortBy={setSortBy} currentView={currentView} activeCategory={activeCategory} customCategories={customCategories} onNewTask={() => { if (currentView === 'category' && activeCategory) setModalCat(activeCategory); setShowCreateModal(true); }} />
 
 
           )}

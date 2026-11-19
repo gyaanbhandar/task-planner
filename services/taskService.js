@@ -216,27 +216,76 @@ export const taskService = {
     await Promise.all(updates);
   },
 
-  // ✅ NEW: Bulk import tasks from CSV/JSON file
+  // ✅ Bulk import tasks from CSV/JSON file — UPSERT logic:
+  // If a task with the exact same title already exists for this user,
+  // update it instead of creating a duplicate.
   async importTasks(tasksArray, userId) {
-    const records = tasksArray.map(t => ({
-      title: t.title,
-      description: t.description || '',
-      category: t.category || 'personal',
-      subcategory: t.subcategory || 'General',
-      priority: t.priority || 'medium',
-      type: t.type || 'one-time',
-      deadline: t.deadline || null,
-      time: t.time || '09:00 AM',
-      status: t.status || 'pending',
-      approval_status: 'none',
-      suggested_by: 'user',
-      user_id: userId
-    }));
+    // Fetch all existing tasks for this user to check for duplicates
+    const { data: existingTasks, error: fetchErr } = await supabase
+      .from('tasks')
+      .select('id, title')
+      .eq('user_id', userId)
+      .neq('status', 'trashed');
+    if (fetchErr) throw fetchErr;
 
-    // Supabase supports batch insert — all records in one call
-    const { data, error } = await supabase.from('tasks').insert(records);
-    if (error) throw error;
-    return { count: records.length };
+    // Build a map of existing title → id (lowercase for case-insensitive match)
+    const existingMap = {};
+    (existingTasks || []).forEach(t => {
+      existingMap[t.title.trim().toLowerCase()] = t.id;
+    });
+
+    const toInsert = [];
+    const toUpdate = [];
+    let updatedCount = 0;
+    let insertedCount = 0;
+
+    tasksArray.forEach(t => {
+      const record = {
+        title: t.title,
+        description: t.description || '',
+        category: t.category || 'personal',
+        subcategory: t.subcategory || 'General',
+        priority: t.priority || 'medium',
+        type: t.type || 'one-time',
+        deadline: t.deadline || null,
+        time: t.time || '09:00 AM',
+        status: t.status || 'pending',
+      };
+
+      const titleKey = t.title.trim().toLowerCase();
+      const existingId = existingMap[titleKey];
+
+      if (existingId) {
+        // Task with same title exists — update it
+        toUpdate.push({ id: existingId, ...record });
+      } else {
+        // New task — insert
+        toInsert.push({
+          ...record,
+          approval_status: 'none',
+          suggested_by: 'user',
+          user_id: userId
+        });
+      }
+    });
+
+    // Batch update existing tasks
+    if (toUpdate.length > 0) {
+      const updatePromises = toUpdate.map(({ id, ...fields }) =>
+        supabase.from('tasks').update(fields).eq('id', id)
+      );
+      await Promise.all(updatePromises);
+      updatedCount = toUpdate.length;
+    }
+
+    // Batch insert new tasks
+    if (toInsert.length > 0) {
+      const { error: insertErr } = await supabase.from('tasks').insert(toInsert);
+      if (insertErr) throw insertErr;
+      insertedCount = toInsert.length;
+    }
+
+    return { count: insertedCount + updatedCount, inserted: insertedCount, updated: updatedCount };
   },
 
   async fetchAiPlan(tasksSummary, userId) {
