@@ -32,6 +32,7 @@ export const parseCSVTasks = (csvContent) => {
       title: row.title,
       description: row.description || '',
       category: normalizeCategory(row.category),
+      categoryName: row.category ? row.category.trim() : '', // preserve original name for auto-creating categories
       subcategory: row.subcategory || 'General',
       priority: normalizePriority(row.priority),
       status: normalizeStatus(row.status),
@@ -68,6 +69,7 @@ export const parseJSONTasks = (jsonContent) => {
       title: item.title.trim(),
       description: item.description || '',
       category: normalizeCategory(item.category),
+      categoryName: item.category ? item.category.trim() : '', // preserve original name for auto-creating categories
       subcategory: item.subcategory || 'General',
       priority: normalizePriority(item.priority),
       status: normalizeStatus(item.status),
@@ -147,13 +149,18 @@ function parseCSVLine(line) {
   return result;
 }
 
-const VALID_CATEGORIES = ['personal', 'work', 'professional', 'leadgen', 'clients', 'health', 'learning', 'finance'];
+const DEFAULT_CATEGORIES = ['personal', 'work', 'professional', 'leadgen', 'clients', 'health', 'learning', 'finance'];
 function normalizeCategory(val) {
   if (!val) return 'personal';
   const lower = val.toLowerCase().trim();
-  if (VALID_CATEGORIES.includes(lower)) return lower;
-  const match = VALID_CATEGORIES.find(c => lower.includes(c) || c.includes(lower));
-  return match || 'personal';
+  // If it matches a known default category, return it
+  if (DEFAULT_CATEGORIES.includes(lower)) return lower;
+  const match = DEFAULT_CATEGORIES.find(c => lower.includes(c) || c.includes(lower));
+  if (match) return match;
+  // For custom/unknown categories, generate a valid id from the name
+  // This allows JSON files with custom categories to pass through
+  const catId = 'cat_' + lower.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  return catId || 'personal';
 }
 
 function normalizePriority(val) {

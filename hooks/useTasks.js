@@ -186,7 +186,10 @@ export function useTasks(session, showToast) {
     try {
       const result = await taskService.importTasks(parsedTasks, session.user.id);
       await loadTasks(); // Refresh task list after import
-      showToast(`${result.count} tasks imported ✓`);
+      const parts = [];
+      if (result.inserted > 0) parts.push(`${result.inserted} new`);
+      if (result.updated > 0) parts.push(`${result.updated} updated`);
+      showToast(`✅ ${parts.join(', ')} task${result.count === 1 ? '' : 's'} imported`);
       return result;
     } catch (err) {
       console.error('Import failed:', err);
