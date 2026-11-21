@@ -210,7 +210,7 @@ RULES:
 
     if (!parsed || !Array.isArray(parsed.actions)) {
       return Response.json({
-        error: "Samajh nahi aaya — thoda clear bolkar dobara try karein.",
+        error: "Could not understand — please speak more clearly and try again.",
         raw: text.slice(0, 300),
       });
     }

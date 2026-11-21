@@ -97,9 +97,9 @@ export default function VoiceCommandButton({ voice, tasks, isMobile }) {
           }}
         >
           <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '2px', fontWeight: 600 }}>
-            {listening ? '🔴 Sun raha hoon…' : status === 'executing' ? '⚙️ Chal raha hai…' : '🧠 Samajh raha hoon…'}
+            {listening ? '🔴 Listening…' : status === 'executing' ? '⚙️ Executing…' : '🧠 Processing…'}
           </div>
-          {transcript || <span style={{ opacity: 0.5 }}>bolna shuru karein…</span>}
+          {transcript || <span style={{ opacity: 0.5 }}>Start speaking…</span>}
         </div>
       )}
 
@@ -133,10 +133,10 @@ export default function VoiceCommandButton({ voice, tasks, isMobile }) {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
               <span style={{ fontSize: '22px' }}>🎙️</span>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: VISUAL_THEME.text }}>Confirm karein</h3>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: VISUAL_THEME.text }}>Please Confirm</h3>
             </div>
             <p style={{ fontSize: '12px', color: VISUAL_THEME.textSec, margin: '0 0 4px 0' }}>
-              Aapne kaha: <em>"{pendingConfirm.transcript}"</em>
+              You said: <em>"{pendingConfirm.transcript}"</em>
             </p>
             {pendingConfirm.speak && (
               <p style={{ fontSize: '13px', color: VISUAL_THEME.text, margin: '0 0 14px 0', fontWeight: 600 }}>

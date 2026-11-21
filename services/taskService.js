@@ -296,7 +296,7 @@ export const taskService = {
     });
     const data = await res.json();
     return { 
-      plan: data.plan || 'Response nahi aaya.',
+      plan: data.plan || 'No response received.',
       limit_reached: data.limit_reached || false,
       used: data.used,
       limit: data.limit

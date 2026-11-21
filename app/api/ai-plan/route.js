@@ -121,7 +121,7 @@ export async function POST(req) {
 Tasks:
 ${taskList}
 
-Provide a clear, structured schedule with time slots. Be practical and efficient. Reply in the same language the task titles are in (Hindi or English). Keep it concise.`,
+Provide a clear, structured schedule with time slots. Be practical and efficient. Always reply in English. Keep it concise.`,
           },
         ],
       }),

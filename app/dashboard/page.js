@@ -820,11 +820,11 @@ export default function AnuTaskOS() {
 
               {/* How it works info */}
               <div style={{ background: '#FFFFFF', borderRadius: '16px', border: `1px solid ${VISUAL_THEME.border}`, padding: '24px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 12px 0' }}>💡 Kaise kaam karta hai?</h4>
+                <h4 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 12px 0' }}>💡 How does it work?</h4>
                 <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.8 }}>
-                  <p style={{ margin: '0 0 8px 0' }}>• AI aapke <strong>pending tasks</strong>, unki <strong>priority</strong> aur <strong>deadlines</strong> analyze karta hai.</p>
-                  <p style={{ margin: '0 0 8px 0' }}>• Fir aaj ke liye <strong>top 3-5 tasks</strong> suggest karta hai with reasoning.</p>
-                  <p style={{ margin: '0 0 8px 0' }}>• Low priority tasks ko <strong>skip/postpone</strong> karne ka suggestion deta hai.</p>
+                  <p style={{ margin: '0 0 8px 0' }}>• AI analyzes your <strong>pending tasks</strong>, their <strong>priority</strong> and <strong>deadlines</strong>.</p>
+                  <p style={{ margin: '0 0 8px 0' }}>• Then suggests <strong>top 3-5 tasks</strong> for today with reasoning.</p>
+                  <p style={{ margin: '0 0 8px 0' }}>• Gives suggestions to <strong>skip/postpone</strong> low priority tasks.</p>
                   <p style={{ margin: 0 }}>• Monthly prompt limits: Trial = 10, Starter = 15, Pro = 75 prompts.</p>
                 </div>
               </div>
@@ -1038,7 +1038,7 @@ export default function AnuTaskOS() {
                 <button onClick={() => setNotifPopupTask(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', color: '#FFF', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
               </div>
               <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0' }}>Task Reminder</h3>
-              <p style={{ fontSize: '13px', margin: 0, opacity: 0.85 }}>Aapke task ka time aa gaya hai!</p>
+              <p style={{ fontSize: '13px', margin: 0, opacity: 0.85 }}>It's time for your task!</p>
             </div>
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>

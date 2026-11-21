@@ -144,13 +144,13 @@ export function useVoiceCommand({ session, tasks, categories, clients, reload, s
         const actions = data.actions || [];
         const clarify = actions.find((a) => a.type === 'clarify');
         if (clarify) {
-          showToast?.(`🎙️ ${clarify.message || 'Kaunsa task? Dobara bolein.'}`);
+          showToast?.(`🎙️ ${clarify.message || 'Which task? Please try again.'}`);
           resetSoon();
           return;
         }
 
         if (actions.length === 0) {
-          showToast?.('🎙️ Koi action nahi mila — dobara try karein.');
+          showToast?.('🎙️ No action found — please try again.');
           resetSoon();
           return;
         }
@@ -176,7 +176,7 @@ export function useVoiceCommand({ session, tasks, categories, clients, reload, s
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       setSupported(false);
-      showToast?.('🎙️ Is browser mein voice support nahi — Chrome use karein.');
+      showToast?.('🎙️ Voice is not supported in this browser — please use Chrome.');
       return;
     }
 
@@ -202,9 +202,9 @@ export function useVoiceCommand({ session, tasks, categories, clients, reload, s
       recognition.onerror = (e) => {
         console.error('SpeechRecognition error:', e.error);
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          showToast?.('🎙️ Mic permission chahiye — browser settings mein allow karein.');
+          showToast?.('🎙️ Microphone permission required — please allow it in browser settings.');
         } else if (e.error === 'no-speech') {
-          showToast?.('🎙️ Kuch sunayi nahi diya — dobara bolein.');
+          showToast?.('🎙️ Nothing was heard — please try again.');
         }
         setStatus('idle');
       };

@@ -39,14 +39,14 @@ export default function ViewNotifications() {
     if (typeof window === 'undefined') return;
 
     if (!('Notification' in window)) {
-      alert("Aapka mobile browser web notifications support nahi karta hai.");
+      alert("Your mobile browser does not support web notifications.");
       return;
     }
 
     // Special Guide for iPhone Users
     if (isIOS && Notification.permission !== 'granted') {
       alert(
-        "📱 iPhone Users ke liye Guide:\n\niOS Safari normal browser tab me notifications block karta hai.\n\n1. Safari me niche Share button par tap karein.\n2. 'Add to Home Screen' chunein.\n3. Home Screen wali App icon se khol kar Toggle ON karein."
+        "📱 Guide for iPhone Users:\n\niOS Safari blocks notifications in a normal browser tab.\n\n1. Tap the Share button at the bottom in Safari.\n2. Select 'Add to Home Screen'.\n3. Open the app from the Home Screen icon and Toggle ON."
       );
       return;
     }
@@ -54,7 +54,7 @@ export default function ViewNotifications() {
     // If Chrome Mobile automatically blocked permissions
     if (Notification.permission === 'denied') {
       alert(
-        "🔒 Permission Browser Se Blocked Hai!\n\nMobile Chrome par Allow karne ke steps:\n\n1. Browser me URL ke paas 🔒 (Lock icon) ya 3 Dots par click karein.\n2. 'Permissions' ya 'Site Settings' kholne.\n3. 'Notifications' ko 'Allow' kar dein.\n4. Page Refresh karke wapis Toggle ON karein!"
+        "🔒 Permission is Blocked by Browser!\n\nSteps to allow on Mobile Chrome:\n\n1. Click the 🔒 (Lock icon) or 3 Dots near the URL in the browser.\n2. Open 'Permissions' or 'Site Settings'.\n3. Set 'Notifications' to 'Allow'.\n4. Refresh the page and Toggle ON again!"
       );
       return;
     }
@@ -75,7 +75,7 @@ export default function ViewNotifications() {
 
           try {
             new Notification("AnuTask", {
-              body: "Notifications active ho gaye hain!",
+              body: "Notifications are now active!",
             });
           } catch (e) {
             console.log("Notification trigger error:", e);
@@ -118,10 +118,10 @@ export default function ViewNotifications() {
     // Trigger Test Popup
     if ('Notification' in window && Notification.permission === 'granted' && isEnabled) {
       new Notification("AnuTask Test Alert 🔔", {
-        body: "Sound and Desktop Alert successfully test ho gaya hai!",
+        body: "Sound and Desktop Alert tested successfully!",
       });
     } else {
-      alert("🔊 Sound Test Triggered!\n\n(Popup notification ke liye pehle toggle switch par click karke permissions allow karein)");
+      alert("🔊 Sound Test Triggered!\n\n(To receive popup notifications, first click the toggle switch and allow permissions)");
     }
   };
 
@@ -220,15 +220,15 @@ export default function ViewNotifications() {
         }}
       >
         <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: '0 0 12px 0' }}>
-          Kaise Kaam Karega?
+          How Does It Work?
         </h3>
         
         <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '14px', lineHeight: '1.6' }}>
           <li style={{ marginBottom: '8px' }}>
-            Aapke <strong>Today's Tasks</strong> mein jis task ka exact time (jaise 02:30 PM) aayega, tab browser automatic popup screen ke corner par bhejega.
+            When a task in your <strong>Today's Tasks</strong> has an exact time set (e.g. 02:30 PM), the browser will automatically send a popup notification to the corner of your screen.
           </li>
           <li>
-            Notification ke sath ek 🔔 sound tone play hogi taaki aapka koi important task miss na ho.
+            A 🔔 sound tone will play with the notification so you never miss an important task.
           </li>
         </ul>
       </div>
